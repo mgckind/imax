@@ -31,10 +31,11 @@ class MainHandler(tornado.web.RequestHandler):
                         continue
                     else:
                         im = Image.open(images[ic])
+                        im = im.resize((resize, resize))
+                        #im = PIL.ImageOps.expand(im, border=1, fill=1)
                         if inv == 1:
                             im = PIL.ImageOps.invert(im)
-                        new_im.paste(
-                            im.resize((resize, resize)), (x_off, y_off))
+                        new_im.paste(im, (x_off, y_off))
                     y_off += resize
                 x_off += resize
             new_im.save(byteIO, 'PNG')
