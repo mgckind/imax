@@ -5,6 +5,7 @@ from PIL import Image
 import PIL.ImageOps
 import io
 import glob
+import json
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -45,9 +46,22 @@ class MainHandler(tornado.web.RequestHandler):
             self.set_status(404)
 
 
+class InfoHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        x = int(self.get_argument("x", '0'))
+        y = int(self.get_argument("y", '0'))
+        print('x={}, y={}'.format(x, y))
+        ic = idx[y][x]
+        self.write(images[ic])
+
+
 def make_app():
     return tornado.web.Application([
         (r"/", MainHandler),
+        (r"/info", InfoHandler),
     ], debug=True)
 
 

@@ -3,8 +3,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"
       integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
       crossorigin=""/>
-      <!-- Make sure you put this AFTER Leaflet's CSS -->
-<script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"
   integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA=="
   crossorigin=""></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
@@ -33,7 +33,7 @@
       // initialize the map
       var map = L.map('map', {
         dragging: true,
-        zoomDelta: 0.5,
+        zoomDelta: 1,
         }).setView([0,0], 0);
 
       // load a tile layer
@@ -48,7 +48,7 @@
         })
 
         map.addLayer(layer);
-        polygon = L.polygon([[0,0],[0,1]]);
+        polygon = L.polygon([[0,0],[0,0.0001]]);
         map.addLayer(window.polygon);
 
         map.on('dblclick', function(event){
@@ -65,8 +65,13 @@
             map.unproject([(vx+1)*256, vy*256], map.getMaxZoom()),
             map.unproject([(vx+1)*256, (vy+1)*256], map.getMaxZoom()),
             map.unproject([vx*256, (vy+1)*256], map.getMaxZoom())
-             ]);
+        ], {color: 'red', fillOpacity: 0.1});
+          if (zz > 2){
           map.addLayer(window.polygon);
+          $.get("http://localhost:8899/info", {x:vx, y:vy}, function(data, status){
+             console.log(`${data}`)
+          });
+        };
           });
 
 
