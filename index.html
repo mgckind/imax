@@ -15,10 +15,16 @@
       .leaflet-container {
         background: #dddddd;
     }
+    .box {
+      width: 800px;
+      overflow: hidden;
+    }
     </style>
 </head>
 
 <body>
+  <div class="box">
+    <div style="width:550px; float:left;">
     <div id="map"></div>
     <!--
     <form>
@@ -26,6 +32,13 @@
     </form>
   -->
     <button onclick="redraw()">Redraw</button>
+  </div>
+  <div style="overflow: hidden;">
+    <p id="galaxy">
+    </p>
+    <button style="visibility: hidden;" id="remove" onclick="blacklist()">Remove</button><br>
+  </div>
+  </div>
 
 
       <script>
@@ -69,7 +82,10 @@
           if (zz > 2){
           map.addLayer(window.polygon);
           $.get("http://localhost:8899/info", {x:vx, y:vy}, function(data, status){
-             console.log(`${data}`)
+             console.log(`${data}`);
+             document.getElementById("galaxy").innerHTML = "Galaxy id:" + data;
+             document.getElementById("remove").style.visibility = "visible";
+             window.toRemove = data;
           });
         };
           });
@@ -99,6 +115,10 @@
           //  layer.options.inv = 0;
           //}
           layer.redraw();
+        }
+        function blacklist() {
+          $.get("http://localhost:8899/black", {gid:window.toRemove}, function(data, status){
+          });
         }
 
       </script>

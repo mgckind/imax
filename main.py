@@ -30,13 +30,15 @@ class MainHandler(tornado.web.RequestHandler):
                     ic = idx[iy+itiles*y][ix+itiles*x]
                     if ic == -1:
                         continue
+                    if images[ic] in blacklist:
+                        im = Image.new('RGB', (resize, resize), '#dddddd')
                     else:
                         im = Image.open(images[ic])
                         im = im.resize((resize, resize))
                         #im = PIL.ImageOps.expand(im, border=1, fill=1)
                         if inv == 1:
                             im = PIL.ImageOps.invert(im)
-                        new_im.paste(im, (x_off, y_off))
+                    new_im.paste(im, (x_off, y_off))
                     y_off += resize
                 x_off += resize
             new_im.save(byteIO, 'PNG')
@@ -53,15 +55,28 @@ class InfoHandler(tornado.web.RequestHandler):
         self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
         x = int(self.get_argument("x", '0'))
         y = int(self.get_argument("y", '0'))
-        print('x={}, y={}'.format(x, y))
+        # print('x={}, y={}'.format(x, y))
         ic = idx[y][x]
-        self.write(images[ic])
+        self.write(images[ic].replace(".png", "").replace("cutouts/", ""))
+
+
+class BlackHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        id = self.get_argument("gid", '0')
+        blacklist.append('cutouts/{}.png'.format(id))
+        print(blacklist)
+        self.set_status(200)
+        return
 
 
 def make_app():
     return tornado.web.Application([
         (r"/", MainHandler),
         (r"/info", InfoHandler),
+        (r"/black", BlackHandler),
     ], debug=True)
 
 
@@ -81,6 +96,7 @@ if __name__ == "__main__":
     idx = np.pad(temp, ((0, NTILES-NY), (0, NTILES-NX)),
                  'constant', constant_values=-1)
     print(idx)
+    blacklist = []
     app = make_app()
     app.listen(8899)
     tornado.ioloop.IOLoop.current().start()
