@@ -1,0 +1,127 @@
+<html>
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css"
+      integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+      crossorigin=""/>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"
+  integrity="sha512-nMMmRyTVoLYqjP9hrbed9S+FzjZHW5gY1TWCHA5ckwXZBadntCNs8kEqAWdrb9O7rxbCaA4lKTIWjDXZxflOcA=="
+  crossorigin=""></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet-easybutton@2/src/easy-button.js"></script>
+
+  <style>
+      #map{ height: 512px ; width: 512px;}
+      .leaflet-container {
+        background: #dddddd;
+    }
+    .box {
+      width: 800px;
+      overflow: hidden;
+    }
+    </style>
+</head>
+
+<body>
+  <div class="box">
+    <div style="width:550px; float:left;">
+    <div id="map"></div>
+    <!--
+    <form>
+    Invert <input type="checkbox" name="checkfield" id="invert"  onchange="redraw()"/>
+    </form>
+  -->
+    <button onclick="redraw()">Redraw</button>
+  </div>
+  <div style="overflow: hidden;">
+    <p id="galaxy">
+    </p>
+    <button style="visibility: hidden;" id="remove" onclick="blacklist()">Remove</button><br>
+  </div>
+  </div>
+
+
+      <script>
+
+      // initialize the map
+      var map = L.map('map', {
+        dragging: true,
+        zoomDelta: 1,
+        }).setView([0,0], 0);
+
+      // load a tile layer
+      var layer = L.tileLayer('http://localhost:8899/?x={x}&y={y}&z={z}&inv={inv}',
+        {
+          inv: 0,
+          maxZoom: 5,
+          minZoom: 1,
+          tileSize: 256,
+          noWrap: true,
+          crs: L.CRS.Simple
+        })
+
+        map.addLayer(layer);
+        polygon = L.polygon([[0,0],[0,0.0001]]);
+        map.addLayer(window.polygon);
+
+        map.on('dblclick', function(event){
+          //console.log(event.latlng);
+          var pp = event.latlng;
+          var zz = map.getZoom();
+          var dd = map.project(L.latLng(pp.lat,pp.lng),map.getMaxZoom);
+          vx = Math.floor(dd.x*32);
+          vy = Math.floor(dd.y*32);
+          console.log(zz, vx, vy);
+          map.removeLayer(window.polygon);
+          window.polygon = L.polygon([
+            map.unproject([vx*256, vy*256], map.getMaxZoom()),
+            map.unproject([(vx+1)*256, vy*256], map.getMaxZoom()),
+            map.unproject([(vx+1)*256, (vy+1)*256], map.getMaxZoom()),
+            map.unproject([vx*256, (vy+1)*256], map.getMaxZoom())
+        ], {color: 'red', fillOpacity: 0.1});
+          if (zz > 2){
+          map.addLayer(window.polygon);
+          $.get("http://localhost:8899/info", {x:vx, y:vy}, function(data, status){
+             console.log(`${data}`);
+             document.getElementById("galaxy").innerHTML = "Galaxy id:" + data;
+             document.getElementById("remove").style.visibility = "visible";
+             window.toRemove = data;
+          });
+        };
+          });
+
+
+        var southWest = map.unproject([0, 8192], map.getMaxZoom());
+        var northEast = map.unproject([8192, 0], map.getMaxZoom());
+        map.setMaxBounds(new L.LatLngBounds(southWest, northEast));
+
+        L.easyButton( '<span class="star">&starf;</span>', function(){
+          if (layer.options.inv == 0) {
+            layer.options.inv = 1 ;
+          }
+          else {
+            layer.options.inv = 0;
+          }
+          layer.redraw();
+        }).addTo(map);
+
+
+        function redraw() {
+          //var inv = document.getElementById('invert');
+          //if (inv.checked) {
+          //  layer.options.inv = 1;
+          //}
+          //else {
+          //  layer.options.inv = 0;
+          //}
+          layer.redraw();
+        }
+        function blacklist() {
+          $.get("http://localhost:8899/black", {gid:window.toRemove}, function(data, status){
+          });
+        }
+
+      </script>
+
+</body>
+</html>
