@@ -1,7 +1,7 @@
-Download to go directory
+Download to go directory    
+  
+Run "go run main.go" for images   
 
-Run "go run main.go" for images
-
-Front end:
-/nnpm install
-/nnpm start
+Front end:   
+npm install  
+npm start   
