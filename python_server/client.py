@@ -7,12 +7,11 @@ from server_aio import read_config
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE = read_config(
+        images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
             "config.yaml"
         )
         del images
-        with open("config.yaml", "r") as cfg:
-            config = yaml.load(cfg)
+        config["serverPort"] = config["server"]["port"]
         config["xdim"] = NX
         config["ydim"] = NY
         config["nimages"] = nimages
@@ -30,7 +29,6 @@ class MainHandler(tornado.web.RequestHandler):
         initial_h = ny * tilesize / int(ntiles / (2 ** config["minZoom"]))
         config["widthDiv"] = min(max(512, initial_w), 3000)
         config["heightDiv"] = min(max(512, initial_h), 800)
-        print(config)
         self.render("index.html", **config)
 
 
@@ -41,5 +39,9 @@ def make_app():
 
 if __name__ == "__main__":
     app = make_app()
-    app.listen(8000)
+    with open("config.yaml", "r") as cfg:
+        config = yaml.load(cfg)
+    port = config["client"]["port"]
+    print("======== Running on http://0.0.0.0:{} ========".format(port))
+    app.listen(port)
     tornado.ioloop.IOLoop.current().start()

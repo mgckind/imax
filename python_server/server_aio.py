@@ -19,6 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 
 coloredlogs.install(level=logging.INFO)
+MAX_WORKERS = None
 
 
 def get_tile(x, y, z, inv, idx):
@@ -36,7 +37,7 @@ def get_tile(x, y, z, inv, idx):
                 ic = idx[iy + itiles * y][ix + itiles * x]
                 if ic == -1:
                     continue
-                if images[ic] in blacklist:
+                if os.path.basename(images[ic]) in blacklist:
                     im = Image.new("RGB", (resize, resize), "#dddddd")
                 else:
                     im = Image.open(images[ic])
@@ -53,28 +54,46 @@ def get_tile(x, y, z, inv, idx):
         return None
 
 
-MAX_WORKERS = None
+async def remove(request):
+    global blacklist
+    conn = sqlite3.connect(dbname)
+    c = conn.cursor()
+    gid = request.query["gid"]
+    c.execute("SELECT id FROM IMAGES where name = '{}'".format(gid))
+    removeid = c.fetchone()[0]
+    c.execute("UPDATE IMAGES SET black = 1 where name = '{}'".format(gid))
+    #blacklist.append(images[removeid])
+    logging.info("To Blacklist: {} ({})".format(removeid, os.path.basename(images[removeid])))
+    response = web.Response(text="", status=200)
+    conn.commit()
+    conn.close()
+    return response
 
 
 async def info(request):
-    global idx, df_final
+    global idx
+    conn = sqlite3.connect(dbname)
+    c = conn.cursor()
     x = int(request.query["x"])
     y = int(request.query["y"])
     ic = idx[y][x]
+    c.execute("SELECT name FROM IMAGES where id = {}".format(ic))
+    name = c.fetchone()[0]
     logging.info("Selected: x={}, y={}, ic={}".format(x, y, ic))
     if ic >= 0:
-        gid = os.path.basename(images[ic])
-        logging.info('Galaxy: {}'.format(gid))
+        logging.info("Galaxy: {}".format(name))
         st = 200
     else:
-        gid = ""
+        name = ""
         st = 200
-    response = web.Response(text=gid, status=st)
+    response = web.Response(text=name, status=st)
+    conn.commit()
+    conn.close()
     return response
 
 
 async def filter(request):
-    global idx, df_final
+    global idx
     print("FILTER: ")
     image_idx = np.where(df_final.MAG_I.values > 17.5)[0]
     print(df_final.ID.iloc[image_idx])
@@ -92,7 +111,7 @@ async def filter(request):
 
 
 async def random(request):
-    global idx, df_final
+    global idx
     logging.info("RANDOMIZE: ")
     temp = np.zeros(NX * NY, dtype="int") - 1
     nim = rn.randint(10, nimages)
@@ -104,34 +123,41 @@ async def random(request):
         temp, ((0, NTILES - NY), (0, NTILES - NX)), "constant", constant_values=-1
     )
     logging.info(" {} images displayed".format(nim))
-    images_final = np.array(images)[image_idx].tolist()
-    gxs_ids = [os.path.basename(i).replace(".png", "") for i in images_final]
-    df_ids = pd.DataFrame(gxs_ids, columns=["ID"])
-    df_final = df_all.join(df_ids, how="inner", lsuffix="", rsuffix="right_")
+    response = web.Response(text="", status=200)
+    return response
+
+
+async def reset(request):
+    global idx, blacklist, images, dbname
+    logging.info("RESET: ")
+    images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
+        "config.yaml"
+    )
+    idx, blacklist = initialize(images, nimages, NX, NY, NTILES)
+    initiate_db(dbname, images)
     response = web.Response(text="", status=200)
     return response
 
 
 async def redraw(request):
-    global idx, df_final
+    global idx, blacklist
+    blacklist = []
     logging.info("REDRAW: ")
-    temp = np.zeros(NX * NY, dtype="int") - 1
-    image_idx = np.arange(nimages)
-    temp[: len(image_idx)] = image_idx
-    temp = temp.reshape((NY, NX))
-    idx = np.pad(
-        temp, ((0, NTILES - NY), (0, NTILES - NX)), "constant", constant_values=-1
-    )
-    images_final = np.array(images)[image_idx].tolist()
-    gxs_ids = [os.path.basename(i).replace(".png", "") for i in images_final]
-    df_ids = pd.DataFrame(gxs_ids, columns=["ID"])
-    df_final = df_all.join(df_ids, how="inner", lsuffix="", rsuffix="right_")
+    conn = sqlite3.connect(dbname)
+    c = conn.cursor()
+    c.execute("SELECT name FROM IMAGES where black = 1")
+    removeids = c.fetchall()
+    for n in removeids:
+        blacklist.append(n[0])
+    response = web.Response(text="", status=200)
+    conn.commit()
+    conn.close()
+
     response = web.Response(text="", status=200)
     return response
 
-
 async def sort(request):
-    global idx, df_final
+    global idx
     print("SORT: ")
     image_idx = np.argsort(df_final.COLOR1.values)
     temp = np.zeros(NX * NY, dtype="int") - 1
@@ -146,7 +172,6 @@ async def sort(request):
 
 
 async def main(request):
-    global idx, df_final
     executor = ProcessPoolExecutor(max_workers=MAX_WORKERS)
     x = int(request.query["x"])
     y = int(request.query["y"])
@@ -166,7 +191,10 @@ def read_config(conf):
         config = yaml.load(cfg)
     images = glob.glob(os.path.join(config["path"], "*.png"))
     total_images = len(images)
-    dbname = config["dataname"]+".db"
+    if total_images == 0:
+        logging.error("Images not found!. Please check path")
+        sys.exit(0)
+    dbname = config["dataname"] + ".db"
     logging.info("Total Images: {}".format(total_images))
     nimages = int(config["nimages"])
     if nimages <= 0:
@@ -198,65 +226,84 @@ def read_config(conf):
             NTILES, MAXZOOM, NTILES * TILESIZE
         )
     )
-    return images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE
+    return (
+        images,
+        total_images,
+        nimages,
+        dbname,
+        NX,
+        NY,
+        NTILES,
+        MAXZOOM,
+        TILESIZE,
+        config,
+    )
 
 
 def create_db(filedb):
     conn = sqlite3.connect(filedb)
     c = conn.cursor()
-    c.execute("create table if not exists galaxies "
-              "(id int primary key, display int default 1, name text, black int default 0)")
+    c.execute(
+        "create table if not exists IMAGES "
+        "(id int primary key, display int default 1, name text, black int default 0)"
+    )
     conn.commit()
+    conn.close()
 
-#def initiate_db(filedb, ):
+
+def initiate_db(filedb, images):
+    chunk = [(i, 1, os.path.basename(images[i]), 0) for i in range(len(images))]
+    conn = sqlite3.connect(filedb)
+    c = conn.cursor()
+    c.executemany("INSERT or REPLACE INTO IMAGES VALUES (?,?,?,?)", chunk)
+    conn.commit()
+    conn.close()
 
 
 def initialize(images, nimages, NX, NY, NTILES):
     temp = np.zeros(NX * NY, dtype="int") - 1
     image_idx = np.arange(nimages)
-    images_final = np.array(images)[image_idx].tolist()
-    gxs_ids = [os.path.basename(i).replace(".png", "") for i in images_final]
-    logging.debug("ss")
-    df_ids = pd.DataFrame(gxs_ids, columns=["ID"])
-    df_final = df_all.join(df_ids, how="inner", lsuffix="", rsuffix="right_")
     temp[: len(image_idx)] = image_idx
     temp = temp.reshape((NY, NX))
     idx = np.pad(
         temp, ((0, NTILES - NY), (0, NTILES - NX)), "constant", constant_values=-1
     )
     blacklist = []
-    return idx, blacklist, df_final
+    return idx, blacklist
 
 
 if __name__ == "__main__":
-    global idx, df_final, images
+    global idx, images, dbname
     logging.basicConfig(level=logging.DEBUG)
-    df_all = pd.read_csv("boxall_final.csv")
-    images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE = read_config(
+    images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
         "config.yaml"
     )
-    idx, blacklist, df_final = initialize(images, nimages, NX, NY, NTILES)
+    idx, blacklist = initialize(images, nimages, NX, NY, NTILES)
     create_db(dbname)
+    initiate_db(dbname, images)
     # Web app
     app = web.Application()
     cors = aiohttp_cors.setup(app)
     cors = aiohttp_cors.setup(
         app,
         defaults={
-            # Allow all to read all CORS-enabled resources from
-            # http://client.example.org.
+            # Allow all to read all CORS-enabled resources from clien
             "*": aiohttp_cors.ResourceOptions()
         },
     )
     rnn = cors.add(app.router.add_resource("/random"))
     inf = cors.add(app.router.add_resource("/info"))
+    bla = cors.add(app.router.add_resource("/black"))
     sor = cors.add(app.router.add_resource("/sort"))
     fil = cors.add(app.router.add_resource("/filter"))
+    res = cors.add(app.router.add_resource("/reset"))
     red = cors.add(app.router.add_resource("/redraw"))
     cors.add(rnn.add_route("GET", random))
     cors.add(inf.add_route("GET", info))
+    cors.add(bla.add_route("GET", remove))
     cors.add(sor.add_route("GET", sort))
     cors.add(fil.add_route("GET", filter))
+    cors.add(res.add_route("GET", reset))
     cors.add(red.add_route("GET", redraw))
     app.router.add_routes([web.get("/", main)])
-    web.run_app(app, port=8888, access_log=None)
+    web.run_app(app, port=config["server"]["port"], access_log=None)
