@@ -62,6 +62,7 @@ func main() {
 func MainHandler(w http.ResponseWriter, r *http.Request) {
 	x, y, z, inv := 0, 0, 0, 0
 	q := r.URL.Query()
+    fmt.Printf(q.Get("AA"))
 	if(len(q.Get("x")) != 0) {
 		x, err = strconv.Atoi(q["x"][0])
 	}
@@ -71,12 +72,10 @@ func MainHandler(w http.ResponseWriter, r *http.Request) {
 	if(len(q.Get("z")) != 0) {
         z, err = strconv.Atoi(q["z"][0])
     }
-	if(len(q.Get("inv")) != 0) {
-        z, err = strconv.Atoi(q["inv"][0])
-    }
 	if(err != nil) {
 		log.Fatal(err)
 	}
+    fmt.Printf(q.Get("z"))
 	fmt.Printf("x = %d, y = %d, z = %d, inv = %d\n", x, y, z, inv)
 
 	new_im := image.NewRGBA(image.Rect(0, 0, TILESIZE, TILESIZE))
