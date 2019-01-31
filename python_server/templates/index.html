@@ -1,0 +1,131 @@
+<html>
+<head>
+    <link rel="stylesheet" href="static/leaflet/dist/leaflet.css"/>
+    <script src="static/jquery.min.js"></script>
+    <script src="static/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="static/plugins/easy-button.css">
+    <script src="static/plugins/easy-button.js"></script>
+
+
+  <style>
+      #map{ height: {{ heightDiv }}px ; width: {{ widthDiv }}px;}
+      .leaflet-container {
+        background: #dddddd;
+    }
+    .box {
+      width: {{widthDiv}}px;
+      overflow: hidden;
+    }
+    </style>
+</head>
+
+<body>
+    <button onclick="redraw()">Redraw</button>
+    <button onclick="random()">Random</button>
+    <button onclick="sort()">Sort</button>
+    <button onclick="filter()">Filter</button>
+  <div class="box">
+    <div style="width:  2550px; float:left;">
+    <div id="map"></div>
+  </div>
+  </div>
+  <div style="overflow: hidden;">
+    <p id="galaxy">
+    </p>
+    <button style="visibility: hidden;" id="remove" onclick="blacklist()">Remove</button><br>
+  </div>
+      <script>
+
+      var map = L.map('map', {
+        dragging: true,
+        zoomDelta: 1,
+        attributionControl: false,
+        zoomControl:false,
+        }).setView([0,0], 0);
+
+      var layer = L.tileLayer('http://localhost:8888/?x={x}&y={y}&z={z}&inv={inv}',
+        {
+          inv: 0,
+          maxZoom: {{ maxZoom }},
+          minZoom: {{ minZoom }},
+          tileSize: {{ tileSize }},
+          noWrap: true,
+          crs: L.CRS.Simple
+        })
+
+        map.addLayer(layer);
+        polygon = L.polygon([[0,0],[0,0.0001]]);
+        map.addLayer(window.polygon);
+
+        map.on('dblclick', function(event){
+          //console.log(event.latlng);
+          var pp = event.latlng;
+          var zz = map.getZoom();
+          var dd = map.project(L.latLng(pp.lat,pp.lng),map.getMaxZoom);
+          vx = Math.floor(dd.x*{{ tilesX }});
+          vy = Math.floor(dd.y*{{ tilesY }});
+          var tileSize = {{ tileSize }};
+          console.log(zz, vx, vy);
+          map.removeLayer(window.polygon);
+          window.polygon = L.polygon([
+            map.unproject([vx*tileSize, vy*tileSize], map.getMaxZoom()),
+            map.unproject([(vx+1)*tileSize, vy*tileSize], map.getMaxZoom()),
+            map.unproject([(vx+1)*tileSize, (vy+1)*tileSize], map.getMaxZoom()),
+            map.unproject([vx*tileSize, (vy+1)*tileSize], map.getMaxZoom())
+        ], {color: 'red', fillOpacity: 0.1});
+          if (zz > 2){
+          $.get("http://localhost:8888/info", {x:vx, y:vy}, function(data, status){
+             console.log(`${data}`);
+             if (data == '') {
+             map.removeLayer(window.polygon);
+             }
+             else {
+                 map.addLayer(window.polygon);
+             }
+             document.getElementById("galaxy").innerHTML = "Galaxy information : " + data;
+             document.getElementById("remove").style.visibility = "visible";
+             window.toRemove = data;
+          });
+        };
+          });
+
+        var southWest = map.unproject([{{ minYrange }}, {{ maxYrange }}], map.getMaxZoom());
+        var northEast = map.unproject([{{ maxXrange }}, {{ minXrange }}], map.getMaxZoom());
+        map.setMaxBounds(new L.LatLngBounds(southWest, northEast));
+
+        L.easyButton( '<span class="star">&starf;</span>', function(){
+          if (layer.options.inv == 0) {
+            layer.options.inv = 1 ;
+          }
+          else {
+            layer.options.inv = 0;
+          }
+          layer.redraw();
+        }).addTo(map);
+
+        function random() {
+         $.get("http://localhost:8888/random");
+          location.reload(true);
+          map.removeLayer(layer);
+          map.addLayer(layer);
+          layer.redraw();
+          }
+        function sort() {
+         $.get("http://localhost:8888/sort");
+          layer.redraw();
+          }
+        function redraw() {
+         $.get("http://localhost:8888/redraw");
+          location.reload(true);
+          map.removeLayer(layer);
+          map.addLayer(layer);
+          layer.redraw();
+          }
+        function filter() {
+         $.get("http://localhost:8888/filter");
+          layer.redraw();
+          }
+      </script>
+
+</body>
+</html>

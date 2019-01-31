@@ -1,0 +1,17 @@
+dataname: 'test'
+path: '/home/matias/DES/cutouts-explorer/python_server/cutouts6k'
+#path: '/home/matias/Downloads/sample/sampled_galaxies/sampled'
+nimages: 5900
+xdim: 100
+ydim: 50
+tileSize: 256
+#minZoom: 0
+#maxZoom: 7
+#tilesX: 128
+#tilesY: 128
+#maxXrange: 20480
+#maxYrange: 5120
+minXrange: 0
+minYrange: 0
+#widthDiv: 1280
+#heightDiv: 512
