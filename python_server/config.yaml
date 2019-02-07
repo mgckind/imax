@@ -18,6 +18,7 @@ minYrange: 0
 #### SERVER
 server:
   port: 8888
+  #workers: None # None will default to the workers in the machine
 #### CLIENT
 client:
   port: 8000
