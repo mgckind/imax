@@ -48,6 +48,7 @@
         zoomDelta: 1,
         attributionControl: false,
         zoomControl:false,
+        keyboardPanDelta: 80,
         }).setView([0,0], 0);
 
       var layer = L.tileLayer('http://localhost:{{ serverPort }}/?x={x}&y={y}&z={z}&inv={inv}',
@@ -63,14 +64,15 @@
         map.addLayer(layer);
         polygon = L.polygon([[0,0],[0,0.0001]]);
         map.addLayer(window.polygon);
+        //map.keyboard.disable();
 
         map.on('dblclick', function(event){
           //console.log(event.latlng);
           var pp = event.latlng;
           var zz = map.getZoom();
           var dd = map.project(L.latLng(pp.lat,pp.lng),map.getMaxZoom);
-          vx = Math.floor(dd.x*{{ tilesX }});
-          vy = Math.floor(dd.y*{{ tilesY }});
+          var vx = Math.floor(dd.x*{{ tilesX }});
+          var vy = Math.floor(dd.y*{{ tilesY }});
           var tileSize = {{ tileSize }};
           console.log(zz, vx, vy);
           map.removeLayer(window.polygon);
@@ -86,6 +88,71 @@
           window.toSpiral = [];
           window.polygon = L.polygon(coords, {color: 'green', fillOpacity: 0.05});
           map.on('keypress', function(event){
+            console.log(event.originalEvent.keyCode);
+            if (event.originalEvent.keyCode == 119) {
+              vy = vy-1;
+              map.removeLayer(window.polygon);
+              window.coords = [
+            map.unproject([vx*tileSize, vy*tileSize], map.getMaxZoom()),
+            map.unproject([(vx+1)*tileSize, vy*tileSize], map.getMaxZoom()),
+            map.unproject([(vx+1)*tileSize, (vy+1)*tileSize], map.getMaxZoom()),
+            map.unproject([vx*tileSize, (vy+1)*tileSize], map.getMaxZoom())
+          ];
+          window.polygon = L.polygon(coords, {color: 'green', fillOpacity: 0.05});
+          if (zz > 2){
+          $.get("http://localhost:{{ serverPort }}/info", {x:vx, y:vy}, function(data, status){
+             console.log(`${data}`);
+             if (data == '') {
+             map.removeLayer(window.polygon);
+             }
+             else {
+                 map.addLayer(window.polygon);
+             }
+             document.getElementById("galaxy").innerHTML = "Galaxy information : " + data;
+             document.getElementById("remove").style.visibility = "visible";
+             document.getElementById("elliptical").style.visibility = "visible";
+             document.getElementById("spiral").style.visibility = "visible";
+             window.toRemove = data;
+          });
+        };
+            var shift = -1*tileSize/Math.pow(2,map.getMaxZoom()-map.getZoom());
+            map.panBy(L.point(0,shift));
+            };
+
+
+            if (event.originalEvent.keyCode == 97) {
+              vx = vx-1;
+              map.removeLayer(window.polygon);
+              window.coords = [
+            map.unproject([vx*tileSize, vy*tileSize], map.getMaxZoom()),
+            map.unproject([(vx+1)*tileSize, vy*tileSize], map.getMaxZoom()),
+            map.unproject([(vx+1)*tileSize, (vy+1)*tileSize], map.getMaxZoom()),
+            map.unproject([vx*tileSize, (vy+1)*tileSize], map.getMaxZoom())
+          ];
+          window.polygon = L.polygon(coords, {color: 'green', fillOpacity: 0.05});
+          if (zz > 2){
+          $.get("http://localhost:{{ serverPort }}/info", {x:vx, y:vy}, function(data, status){
+             console.log(`${data}`);
+             if (data == '') {
+             map.removeLayer(window.polygon);
+             }
+             else {
+                 map.addLayer(window.polygon);
+             }
+             document.getElementById("galaxy").innerHTML = "Galaxy information : " + data;
+             document.getElementById("remove").style.visibility = "visible";
+             document.getElementById("elliptical").style.visibility = "visible";
+             document.getElementById("spiral").style.visibility = "visible";
+             window.toRemove = data;
+          });
+        };
+
+            var shift = -1*tileSize/Math.pow(2,map.getMaxZoom()-map.getZoom());
+            map.panBy(L.point(shift,0));
+            };
+
+
+
             if (event.originalEvent.key == 'd') {
               blacklist();
             };
@@ -130,7 +197,7 @@
 
         function blacklist() {
           map.removeLayer(window.polygon);
-          window.toDeleteCells.push(coords);
+          window.toDeleteCells.push(window.coords);
           window.multipolygon = L.polygon(window.toDeleteCells, {color: 'red', fillOpacity: 0.01});
           map.addLayer(window.multipolygon);
           $.get("http://localhost:{{ serverPort }}/black", {gid:window.toRemove});
@@ -138,13 +205,13 @@
 
         function elliptical() {
           map.removeLayer(window.polygon);
-          window.toElliptical.push(coords);
+          window.toElliptical.push(window.coords);
           window.multipolygonE = L.polygon(window.toElliptical, {color: 'orange', fillOpacity: 0.01});
           map.addLayer(window.multipolygonE);
         }
         function spiral() {
           map.removeLayer(window.polygon);
-          window.toSpiral.push(coords);
+          window.toSpiral.push(window.coords);
           window.multipolygonS = L.polygon(window.toSpiral, {color: 'blue', fillOpacity: 0.01});
           map.addLayer(window.multipolygonS);
         }
