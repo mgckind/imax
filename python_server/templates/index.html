@@ -35,13 +35,25 @@
   <div style="overflow: hidden;">
     <p id="galaxy">
     </p>
+
     <button style="visibility: hidden;" id="remove" onclick="blacklist()">Remove</button>
     <button style="visibility: hidden;" id="elliptical" onclick="elliptical()">Elliptical</button>
     <button style="visibility: hidden;" id="spiral" onclick="spiral()">Spiral</button>
 
     <br>
+
+    {% for idx, cl in enumerate(classes) %}
+    <button style="visibility: hidden;" id="button_{{ idx }}" onclick="custom({{ list(cl.values())[0] }})">{{ list(cl.keys())[0] }}</button>
+    {% end %}
+
   </div>
       <script>
+
+      document.getElementById("map").onkeydown = function (e) {
+      		if(e.keyCode == '54') {
+      			 e.stopPropagation();
+      		}
+      	};
 
       var map = L.map('map', {
         dragging: true,
@@ -51,7 +63,7 @@
         keyboardPanDelta: 80,
         }).setView([0,0], 0);
 
-      var layer = L.tileLayer('http://localhost:{{ serverPort }}/?x={x}&y={y}&z={z}&inv={inv}',
+      var layer = L.tileLayer('{{ serverHost }}:{{ serverPort }}/?x={x}&y={y}&z={z}&inv={inv}',
         {
           inv: 0,
           maxZoom: {{ maxZoom }},
@@ -66,6 +78,44 @@
         map.addLayer(window.polygon);
         //map.keyboard.disable();
 
+
+        function getCoords(vx,vy,tileSize){
+            var temp_coords = [
+            map.unproject([vx*tileSize, vy*tileSize], map.getMaxZoom()),
+            map.unproject([(vx+1)*tileSize, vy*tileSize], map.getMaxZoom()),
+            map.unproject([(vx+1)*tileSize, (vy+1)*tileSize], map.getMaxZoom()),
+            map.unproject([vx*tileSize, (vy+1)*tileSize], map.getMaxZoom())
+            ];
+            return temp_coords;
+        };
+
+	function selectTile(vx,vy,tileSize,zz){
+              map.removeLayer(window.polygon);
+              window.coords = getCoords(vx,vy,tileSize);
+              window.polygon = L.polygon(coords, {color: 'green', fillOpacity: 0.05});
+              if (zz > 2){
+                $.get("{{ serverHost }}:{{ serverPort }}/info", {x:vx, y:vy}, function(data, status){
+                console.log(`${data}`);
+                if (data == '') {
+                  map.removeLayer(window.polygon);
+                  }
+                else {
+                  map.addLayer(window.polygon);
+                  }
+                document.getElementById("galaxy").innerHTML = "Galaxy information : " + data;
+                document.getElementById("remove").style.visibility = "visible";
+                document.getElementById("elliptical").style.visibility = "visible";
+                document.getElementById("spiral").style.visibility = "visible";
+
+                {% for idx, cl in enumerate(classes) %}
+                document.getElementById("button_{{ idx }}").style.visibility = "visible";
+                {% end %}
+
+                window.toRemove = data;
+              });
+             };
+	};
+
         map.on('dblclick', function(event){
           //console.log(event.latlng);
           var pp = event.latlng;
@@ -75,110 +125,70 @@
           var vy = Math.floor(dd.y*{{ tilesY }});
           var tileSize = {{ tileSize }};
           console.log(zz, vx, vy);
-          map.removeLayer(window.polygon);
 
-          window.coords = [
-            map.unproject([vx*tileSize, vy*tileSize], map.getMaxZoom()),
-            map.unproject([(vx+1)*tileSize, vy*tileSize], map.getMaxZoom()),
-            map.unproject([(vx+1)*tileSize, (vy+1)*tileSize], map.getMaxZoom()),
-            map.unproject([vx*tileSize, (vy+1)*tileSize], map.getMaxZoom())
-        ];
-          window.toDeleteCells = [];
+	     window.toDeleteCells = [];
           window.toElliptical = [];
           window.toSpiral = [];
-          window.polygon = L.polygon(coords, {color: 'green', fillOpacity: 0.05});
-          map.on('keypress', function(event){
+
+          window.allCells = new Array(10);
+          for (var i = 0; i < window.allCells.length; i++) {
+            window.allCells[i] = [];
+          }
+
+          window.allMultipolygon = new Array(10);
+          //for (var i = 0; i < window.allMultipolygon.length; i++) {
+            //  window.allMultipolygon[i] = [];
+          //}
+
+	  selectTile(vx,vy,tileSize,zz);
+
+	  map.on('keypress', function(event){
             console.log(event.originalEvent.keyCode);
-            if (event.originalEvent.keyCode == 119) {
+	    event.originalEvent.preventDefault();
+	    event.originalEvent.stopPropagation();
+
+	    if (event.originalEvent.keyCode == 119) {
               vy = vy-1;
-              map.removeLayer(window.polygon);
-              window.coords = [
-            map.unproject([vx*tileSize, vy*tileSize], map.getMaxZoom()),
-            map.unproject([(vx+1)*tileSize, vy*tileSize], map.getMaxZoom()),
-            map.unproject([(vx+1)*tileSize, (vy+1)*tileSize], map.getMaxZoom()),
-            map.unproject([vx*tileSize, (vy+1)*tileSize], map.getMaxZoom())
-          ];
-          window.polygon = L.polygon(coords, {color: 'green', fillOpacity: 0.05});
-          if (zz > 2){
-          $.get("http://localhost:{{ serverPort }}/info", {x:vx, y:vy}, function(data, status){
-             console.log(`${data}`);
-             if (data == '') {
-             map.removeLayer(window.polygon);
-             }
-             else {
-                 map.addLayer(window.polygon);
-             }
-             document.getElementById("galaxy").innerHTML = "Galaxy information : " + data;
-             document.getElementById("remove").style.visibility = "visible";
-             document.getElementById("elliptical").style.visibility = "visible";
-             document.getElementById("spiral").style.visibility = "visible";
-             window.toRemove = data;
-          });
-        };
-            var shift = -1*tileSize/Math.pow(2,map.getMaxZoom()-map.getZoom());
-            map.panBy(L.point(0,shift));
-            };
+	      selectTile(vx,vy,tileSize,zz);
+              var shift = -1*tileSize/Math.pow(2,map.getMaxZoom()-map.getZoom());
+              map.panBy(L.point(0,shift));
+              };
 
 
             if (event.originalEvent.keyCode == 97) {
               vx = vx-1;
-              map.removeLayer(window.polygon);
-              window.coords = [
-            map.unproject([vx*tileSize, vy*tileSize], map.getMaxZoom()),
-            map.unproject([(vx+1)*tileSize, vy*tileSize], map.getMaxZoom()),
-            map.unproject([(vx+1)*tileSize, (vy+1)*tileSize], map.getMaxZoom()),
-            map.unproject([vx*tileSize, (vy+1)*tileSize], map.getMaxZoom())
-          ];
-          window.polygon = L.polygon(coords, {color: 'green', fillOpacity: 0.05});
-          if (zz > 2){
-          $.get("http://localhost:{{ serverPort }}/info", {x:vx, y:vy}, function(data, status){
-             console.log(`${data}`);
-             if (data == '') {
-             map.removeLayer(window.polygon);
-             }
-             else {
-                 map.addLayer(window.polygon);
-             }
-             document.getElementById("galaxy").innerHTML = "Galaxy information : " + data;
-             document.getElementById("remove").style.visibility = "visible";
-             document.getElementById("elliptical").style.visibility = "visible";
-             document.getElementById("spiral").style.visibility = "visible";
-             window.toRemove = data;
-          });
-        };
-
-            var shift = -1*tileSize/Math.pow(2,map.getMaxZoom()-map.getZoom());
-            map.panBy(L.point(shift,0));
+	      selectTile(vx,vy,tileSize,zz);
+              var shift = -1*tileSize/Math.pow(2,map.getMaxZoom()-map.getZoom());
+              map.panBy(L.point(shift,0));
             };
 
-
-
-            if (event.originalEvent.key == 'd') {
-              blacklist();
+	    if (event.originalEvent.keyCode == 115) {
+              vy = vy+1;
+	      selectTile(vx,vy,tileSize,zz);
+              var shift = 1*tileSize/Math.pow(2,map.getMaxZoom()-map.getZoom());
+              map.panBy(L.point(0,shift));
             };
-            if (event.originalEvent.key == 'e') {
-              elliptical();
-            }
-            if (event.originalEvent.key == 's') {
-              spiral();
-            }
+
+	    if (event.originalEvent.keyCode == 100) {
+              vx = vx+1;
+	      selectTile(vx,vy,tileSize,zz);
+              var shift = 1*tileSize/Math.pow(2,map.getMaxZoom()-map.getZoom());
+              map.panBy(L.point(shift,0));
+            };
+
+            if (event.originalEvent.key == '0') {custom(0);};
+            if (event.originalEvent.key == '1') {custom(1);};
+            if (event.originalEvent.key == '2') {custom(2);};
+            if (event.originalEvent.key == '3') {custom(3);};
+            if (event.originalEvent.key == '4') {custom(4);};
+            if (event.originalEvent.key == '5') {custom(5);};
+            if (event.originalEvent.key == '6') {custom(6);};
+            if (event.originalEvent.key == '7') {custom(7);};
+            if (event.originalEvent.key == '8') {custom(8);};
+            if (event.originalEvent.key == '9') {custom(9);};
+
             });
-          if (zz > 2){
-          $.get("http://localhost:{{ serverPort }}/info", {x:vx, y:vy}, function(data, status){
-             console.log(`${data}`);
-             if (data == '') {
-             map.removeLayer(window.polygon);
-             }
-             else {
-                 map.addLayer(window.polygon);
-             }
-             document.getElementById("galaxy").innerHTML = "Galaxy information : " + data;
-             document.getElementById("remove").style.visibility = "visible";
-             document.getElementById("elliptical").style.visibility = "visible";
-             document.getElementById("spiral").style.visibility = "visible";
-             window.toRemove = data;
-          });
-        };
+
           });
 
         var southWest = map.unproject([{{ minYrange }}, {{ maxYrange }}], map.getMaxZoom());
@@ -195,12 +205,25 @@
           layer.redraw();
         }).addTo(map);
 
+
+
+
+        function custom(val) {
+          var colors = ['pink','sienna','cyan','olive','azure','red', 'blue', 'orange', 'magenta', 'yellow']
+          map.removeLayer(window.polygon);
+          window.allCells[val].push(window.coords);
+          window.allMultipolygon[val] = L.polygon(window.allCells[val], {color: colors[val], fillOpacity: 0.01});
+          map.addLayer(window.allMultipolygon[val]);
+        }
+
+
+
         function blacklist() {
           map.removeLayer(window.polygon);
           window.toDeleteCells.push(window.coords);
           window.multipolygon = L.polygon(window.toDeleteCells, {color: 'red', fillOpacity: 0.01});
           map.addLayer(window.multipolygon);
-          $.get("http://localhost:{{ serverPort }}/black", {gid:window.toRemove});
+          $.get("{{ serverHost }}:{{ serverPort }}/black", {gid:window.toRemove});
         }
 
         function elliptical() {
@@ -217,32 +240,32 @@
         }
 
         function random() {
-         $.get("http://localhost:{{ serverPort }}/random");
+         $.get("{{ serverHost }}:{{ serverPort }}/random");
           location.reload(true);
           map.removeLayer(layer);
           map.addLayer(layer);
           layer.redraw();
           }
         function sort() {
-         $.get("http://localhost:{{ serverPort }}/sort");
+         $.get("{{ serverHost }}:{{ serverPort }}/sort");
           layer.redraw();
           }
         function redraw() {
-         $.get("http://localhost:{{ serverPort }}/redraw");
+         $.get("{{ serverHost }}:{{ serverPort }}/redraw");
           location.reload(true);
           map.removeLayer(layer);
           map.addLayer(layer);
           layer.redraw();
           }
         function reset() {
-         $.get("http://localhost:{{ serverPort }}/reset");
+         $.get("{{ serverHost }}:{{ serverPort }}/reset");
           location.reload(true);
           map.removeLayer(layer);
           map.addLayer(layer);
           layer.redraw();
           }
         function filter() {
-         $.get("http://localhost:{{ serverPort }}/filter");
+         $.get("{{ serverHost }}:{{ serverPort }}/filter");
           layer.redraw();
           }
       </script>

@@ -12,6 +12,7 @@ class MainHandler(tornado.web.RequestHandler):
         )
         del images
         config["serverPort"] = config["server"]["port"]
+        config["serverHost"] = config["server"]["host"]
         config["xdim"] = NX
         config["ydim"] = NY
         config["nimages"] = nimages

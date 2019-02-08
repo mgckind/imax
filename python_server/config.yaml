@@ -1,5 +1,5 @@
 dataname: 'test'
-path: '/home/matias/Downloads/sample/sampled_galaxies/sampled'
+path: '/home/matias/DES/box10/images'
 #path: '/home/matias/Downloads/sample/sampled_galaxies/sampled'
 nimages: 5900
 xdim: 110
@@ -17,8 +17,14 @@ minYrange: 0
 #heightDiv: 512
 #### SERVER
 server:
+  host: 'http://localhost'
   port: 8888
   #workers: None # None will default to the workers in the machine
 #### CLIENT
 client:
   port: 8000
+#### classes
+classes:
+    - Elliptical: 8
+    - Spiral: 9
+    - Delete: 0
