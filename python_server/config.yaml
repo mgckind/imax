@@ -1,9 +1,9 @@
 dataname: 'test'
 path: '/home/matias/DES/box10/images'
 #path: '/home/matias/Downloads/sample/sampled_galaxies/sampled'
-nimages: 5900
-xdim: 110
-ydim: 50
+nimages: 900
+xdim: 30
+ydim: 30
 tileSize: 256
 #minZoom: 0
 #maxZoom: 7
@@ -25,6 +25,7 @@ client:
   port: 8000
 #### classes
 classes:
-    - Elliptical: 8
-    - Spiral: 9
+    - Elliptical: 9
+    - Spiral: 8
+    - Other: 7
     - Delete: 0

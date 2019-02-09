@@ -195,7 +195,7 @@ def read_config(conf):
         logging.error("Images not found!. Please check path")
         sys.exit(0)
     dbname = config["dataname"] + ".db"
-    logging.info("Total Images: {}".format(total_images))
+    logging.info("Total Images in path: {}".format(total_images))
     nimages = int(config["nimages"])
     if nimages <= 0:
         logging.error("nimages must be positive")
@@ -207,6 +207,7 @@ def read_config(conf):
             )
         )
         nimages = total_images
+    logging.info("No Images displayed: {}".format(nimages))
     NX = config["xdim"]
     NY = config["ydim"]
     if NX * NY < nimages:
@@ -226,6 +227,7 @@ def read_config(conf):
             NTILES, MAXZOOM, NTILES * TILESIZE
         )
     )
+    logging.info('NX x NY = {} x {}'.format(NX,NY))
     return (
         images,
         total_images,
