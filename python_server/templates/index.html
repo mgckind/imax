@@ -35,6 +35,8 @@
   <div style="overflow: hidden;">
     <p id="galaxy">
     </p>
+    <button style="visibility: hidden;" id="clear" onclick="clear_selected()"> Clear</button>
+
 
     <br>
 
@@ -74,9 +76,6 @@
         map.addLayer(window.polygon);
         //map.keyboard.disable();
 
-        window.allCells = new Array(10);
-        for (var i = 0; i < window.allCells.length; i++) {window.allCells[i] = [];};
-        window.allMultipolygon = new Array(10);
         window.colors = ['pink','sienna','cyan','olive','azure','red', 'blue', 'orange', 'magenta', 'yellow'];
         window.classesName = new Array(10);
         window.validClassesCode = []
@@ -113,6 +112,7 @@
               map.addLayer(window.polygon);
               }
             document.getElementById("galaxy").innerHTML = "Galaxy information : " + data;
+            document.getElementById("clear").style.visibility = "visible";
 
             {% for idx, cl in enumerate(classes) %}
             document.getElementById("button_{{ idx }}").style.visibility = "visible";
