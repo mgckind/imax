@@ -54,16 +54,16 @@ def get_tile(x, y, z, inv, idx):
         return None
 
 
-async def remove(request):
-    global blacklist
+async def update(request):
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
     gid = request.query["gid"]
-    c.execute("SELECT id FROM IMAGES where name = '{}'".format(gid))
-    removeid = c.fetchone()[0]
-    c.execute("UPDATE IMAGES SET black = 1 where name = '{}'".format(gid))
-    #blacklist.append(images[removeid])
-    logging.info("To Blacklist: {} ({})".format(removeid, os.path.basename(images[removeid])))
+    class_input = int(request.query["class"])
+    c.execute("UPDATE IMAGES SET class = {} where name = '{}'".format(class_input, gid))
+    if class_input >= 0:
+        logging.info("UPDATE: {} to class {}".format(gid, class_input))
+    else:
+        logging.info("CLEAR: {}".format(gid))
     response = web.Response(text="", status=200)
     conn.commit()
     conn.close()
@@ -77,16 +77,16 @@ async def info(request):
     x = int(request.query["x"])
     y = int(request.query["y"])
     ic = idx[y][x]
-    c.execute("SELECT name FROM IMAGES where id = {}".format(ic))
-    name = c.fetchone()[0]
+    c.execute("SELECT name,class FROM IMAGES where id = {}".format(ic))
+    name, classid = c.fetchone()
     logging.info("Selected: x={}, y={}, ic={}".format(x, y, ic))
     if ic >= 0:
-        logging.info("Galaxy: {}".format(name))
+        logging.info("Galaxy: {}, Class: {}".format(name, classid))
         st = 200
     else:
         name = ""
         st = 200
-    response = web.Response(text=name, status=st)
+    response = web.json_response({'name': name, 'class': classid})
     conn.commit()
     conn.close()
     return response
@@ -134,7 +134,7 @@ async def reset(request):
         "config.yaml"
     )
     idx, blacklist = initialize(images, nimages, NX, NY, NTILES)
-    initiate_db(dbname, images)
+    # initiate_db(dbname, images)
     response = web.Response(text="", status=200)
     return response
 
@@ -145,7 +145,7 @@ async def redraw(request):
     logging.info("REDRAW: ")
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
-    c.execute("SELECT name FROM IMAGES where black = 1")
+    c.execute("SELECT name FROM IMAGES where class = 0")
     removeids = c.fetchall()
     for n in removeids:
         blacklist.append(n[0])
@@ -155,6 +155,7 @@ async def redraw(request):
 
     response = web.Response(text="", status=200)
     return response
+
 
 async def sort(request):
     global idx
@@ -247,14 +248,14 @@ def create_db(filedb):
     c = conn.cursor()
     c.execute(
         "create table if not exists IMAGES "
-        "(id int primary key, display int default 1, name text, black int default 0)"
+        "(id int primary key, display int default 1, name text, class int default -1)"
     )
     conn.commit()
     conn.close()
 
 
 def initiate_db(filedb, images):
-    chunk = [(i, 1, os.path.basename(images[i]), 0) for i in range(len(images))]
+    chunk = [(i, 1, os.path.basename(images[i]), -1) for i in range(len(images))]
     conn = sqlite3.connect(filedb)
     c = conn.cursor()
     c.executemany("INSERT or REPLACE INTO IMAGES VALUES (?,?,?,?)", chunk)
@@ -295,14 +296,14 @@ if __name__ == "__main__":
     )
     rnn = cors.add(app.router.add_resource("/random"))
     inf = cors.add(app.router.add_resource("/info"))
-    bla = cors.add(app.router.add_resource("/black"))
+    upd = cors.add(app.router.add_resource("/update"))
     sor = cors.add(app.router.add_resource("/sort"))
     fil = cors.add(app.router.add_resource("/filter"))
     res = cors.add(app.router.add_resource("/reset"))
     red = cors.add(app.router.add_resource("/redraw"))
     cors.add(rnn.add_route("GET", random))
     cors.add(inf.add_route("GET", info))
-    cors.add(bla.add_route("GET", remove))
+    cors.add(upd.add_route("GET", update))
     cors.add(sor.add_route("GET", sort))
     cors.add(fil.add_route("GET", filter))
     cors.add(res.add_route("GET", reset))
