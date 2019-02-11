@@ -9,6 +9,7 @@
     <script src="static/plugins/easy-button.js"></script>
     <script src="static/plugins/Leaflet.Control.Custom.js"></script>
     <script src="static/plugins/L.Control.SlideMenu.js"></script>
+    <script src="static/help.js"></script>
     <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
 <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
 
@@ -177,6 +178,18 @@
 	      selectTile(vx,vy,tileSize,zz);
           });
 
+          map.on('contextmenu', function(event){
+             var pp = event.latlng;
+             var dd = map.project(L.latLng(pp.lat,pp.lng),map.getMaxZoom);
+             window.zz = map.getZoom();
+             window.vx = Math.floor(dd.x*{{ tilesX }});
+             window.vy = Math.floor(dd.y*{{ tilesY }});
+             window.tileSize = {{ tileSize }};
+             selectTile(vx,vy,tileSize,zz);
+            });
+
+
+
 
 	  map.on('keypress', function(event){
         //console.log(event.originalEvent.keyCode);
@@ -232,9 +245,9 @@
         var northEast = map.unproject([{{ maxXrange }}, {{ minXrange }}], map.getMaxZoom());
         map.setMaxBounds(new L.LatLngBounds(southWest, northEast));
 
-      L.control.slideMenu('<p>test</p>', {'icon': 'fa-question'}).addTo(map);
+      L.control.slideMenu(contentHelp, {'icon': 'fa-question'}).addTo(map);
       map.addControl(new L.Control.Fullscreen());
-        L.easyButton( '<span class="star">&starf;</span>', function(){
+        L.easyButton( '<i class="myhelp fa fa-star-half-o" aria-hidden="true"></i>', function(){
           if (layer.options.inv == 0) {
             layer.options.inv = 1 ;
           }
@@ -272,6 +285,7 @@
           },
       })
       .addTo(map);
+
 
         function custom(val) {
           var valid = window.validClassesCode.includes(val);
