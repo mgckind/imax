@@ -16,6 +16,20 @@
       width: {{widthDiv}}px;
       overflow: hidden;
     }
+
+    .info {
+        padding: 6px 8px;
+        font: 14px/16px Arial, Helvetica, sans-serif;
+        background: white;
+        background: rgba(255,255,255,0.8);
+        box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        border-radius: 5px;
+    }
+    .info h4 {
+        margin: 0 0 5px;
+        color: #777;
+    }
+
     </style>
 </head>
 
@@ -33,12 +47,6 @@
   </div>
   </div>
   <div style="overflow: hidden;">
-    <p id="galaxy">
-    </p>
-    <button style="visibility: hidden;" id="clear" onclick="clear_selected()"> Clear</button>
-
-
-    <br>
 
     {% for idx, cl in enumerate(classes) %}
     <button style="visibility: hidden;" id="button_{{ idx }}" onclick="custom({{ list(cl.values())[0] }})">{{ list(cl.keys())[0] }}({{ list(cl.values())[0] }})</button>
@@ -60,6 +68,24 @@
         zoomControl:false,
         keyboardPanDelta: 80,
         }).setView([0,0], 0);
+
+        var info = L.control();
+
+        info.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+            this.update();
+            return this._div;
+        };
+
+        // method that we will use to update the control based on feature properties passed
+        info.update = function (props) {
+            this._div.innerHTML = '<h4>Image information</h4> <br />' +
+            ( props ? 'Name: ' + props.name + '<br /> Class: ' + props.class +
+            '<br /><button onclick="clear_selected()"> Clear</button>' : '');
+        };
+
+        info.addTo(map);
+
 
       var layer = L.tileLayer('{{ serverHost }}:{{ serverPort }}/?x={x}&y={y}&z={z}&inv={inv}',
         {
@@ -110,7 +136,6 @@
             else {
               map.addLayer(window.polygon);
               }
-            document.getElementById("galaxy").innerHTML = "Galaxy information : " + data.name + "<br /> Class: " + data.class;
             if (data.class >= 0) {
                if (window.classifiedTiles[data.name] == undefined) {
                window.classifiedTiles[data.name] = {
@@ -119,6 +144,8 @@
             };
             };
             window.selected = data.name;
+            var props = { 'name': window.selected, 'class':  window.classesName[data.class] }
+            info.update(props);
           });
         };
 	 };
@@ -216,11 +243,13 @@
             else {
             window.classifiedTiles[window.selected] = {
                 'class'  : val,
-                'polygon': L.polygon(window.coords, {color: window.colors[val],  fillOpacity: 0.12}) };
+                'polygon': L.polygon(window.coords, {color: window.colors[val],  fillOpacity: 0.12}).bindTooltip("my tooltip") };
             map.removeLayer(window.polygon);
             map.removeLayer(window.classifiedTiles[window.selected].polygon);
             map.addLayer(window.classifiedTiles[window.selected].polygon);
             $.get("{{ serverHost }}:{{ serverPort }}/update", {gid:window.selected, class: window.classifiedTiles[window.selected].class });
+            var props = { 'name': window.selected, 'class':  window.classesName[val] }
+            info.update(props);
             };
           };
       }; //custom
@@ -232,6 +261,8 @@
               map.removeLayer(window.polygon);
               map.addLayer(window.polygon);
               $.get("{{ serverHost }}:{{ serverPort }}/update", {gid:window.selected, class:-1});
+              var props = { 'name': window.selected, 'class':  -1 };
+              info.update(props);
           };
 
       }; // clear_selected
