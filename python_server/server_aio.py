@@ -78,15 +78,19 @@ async def info(request):
     y = int(request.query["y"])
     ic = idx[y][x]
     c.execute("SELECT name,class FROM IMAGES where id = {}".format(ic))
-    name, classid = c.fetchone()
-    logging.info("Selected: x={}, y={}, ic={}".format(x, y, ic))
+    try:
+        name, classid = c.fetchone()
+        logging.info("Selected: x={}, y={}, ic={}".format(x, y, ic))
+        st = 200
+    except:
+        st = 404
+        ic = -1
+        classid = -1
     if ic >= 0:
         logging.info("Galaxy: {}, Class: {}".format(name, classid))
-        st = 200
     else:
         name = ""
-        st = 200
-    response = web.json_response({'name': name, 'class': classid})
+    response = web.json_response({'name': name, 'class': classid, 'status': st})
     conn.commit()
     conn.close()
     return response

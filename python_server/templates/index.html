@@ -3,8 +3,14 @@
     <link rel="stylesheet" href="static/leaflet/dist/leaflet.css"/>
     <script src="static/jquery.min.js"></script>
     <script src="static/leaflet/dist/leaflet.js"></script>
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="static/plugins/L.Control.SlideMenu.css">
     <link rel="stylesheet" href="static/plugins/easy-button.css">
     <script src="static/plugins/easy-button.js"></script>
+    <script src="static/plugins/Leaflet.Control.Custom.js"></script>
+    <script src="static/plugins/L.Control.SlideMenu.js"></script>
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
+<link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
 
 
   <style>
@@ -13,7 +19,8 @@
         background: #dddddd;
     }
     .box {
-      width: {{widthDiv}}px;
+      width: {{ widthDiv }}px;
+      height: {{ heightDiv }}px;
       overflow: hidden;
     }
 
@@ -34,24 +41,11 @@
 </head>
 
 <body>
-    <button onclick="reset()">Reset</button>
-    <button onclick="redraw()">Redraw</button>
-    <button onclick="random()">Random</button>
-    <!--
-    <button onclick="sort()">Sort</button>
-    <button onclick="filter()">Filter</button>
-    -->
+
   <div class="box">
     <div style="width:  2550px; float:left;">
     <div id="map"></div>
   </div>
-  </div>
-  <div style="overflow: hidden;">
-
-    {% for idx, cl in enumerate(classes) %}
-    <button style="visibility: hidden;" id="button_{{ idx }}" onclick="custom({{ list(cl.values())[0] }})">{{ list(cl.keys())[0] }}({{ list(cl.values())[0] }})</button>
-    {% end %}
-
   </div>
       <script>
 
@@ -64,6 +58,7 @@
       var map = L.map('map', {
         dragging: true,
         zoomDelta: 1,
+        fullscreenControl: false,
         attributionControl: false,
         zoomControl:false,
         keyboardPanDelta: 80,
@@ -81,7 +76,7 @@
         info.update = function (props) {
             this._div.innerHTML = '<h4>Image information</h4> <br />' +
             ( props ? 'Name: ' + props.name + '<br /> Class: ' + props.class +
-            '<br /><button onclick="clear_selected()"> Clear</button>' : '');
+            '<br /><button onclick="clear_selected()"> Clear(c)</button>' : '');
         };
 
         info.addTo(map);
@@ -129,6 +124,17 @@
         window.polygon = L.polygon(coords, {color: 'green', fillOpacity: 0.05});
         if (zz >= {{ minZoom }} ){
             $.get("{{ serverHost }}:{{ serverPort }}/info", {x:vx, y:vy}, function(data, status){
+            if (data.status == 404) {
+               console.log('outside boundaries');
+               window.vx = lastvx;
+               window.vy = lastvy;
+               window.zz = lastzz;
+               selectTile(lastvx,lastvy,tileSize,lastzz);
+               return;
+            };
+            window.lastvx = vx;
+            window.lastvy = vy;
+            window.lastzz = zz;
             console.log(data.name, data.class);
             if (data.name == '') {
               map.removeLayer(window.polygon);
@@ -159,10 +165,16 @@
           window.vy = Math.floor(dd.y*{{ tilesY }});
           window.tileSize = {{ tileSize }};
 	      selectTile(vx,vy,tileSize,zz);
-            {% for idx, cl in enumerate(classes) %}
-            document.getElementById("button_{{ idx }}").style.visibility = "visible";
-            {% end %}
-            document.getElementById("clear").style.visibility = "visible";
+          });
+
+        map.on('click', function(event){
+          var pp = event.latlng;
+          var dd = map.project(L.latLng(pp.lat,pp.lng),map.getMaxZoom);
+          window.zz = map.getZoom();
+          window.vx = Math.floor(dd.x*{{ tilesX }});
+          window.vy = Math.floor(dd.y*{{ tilesY }});
+          window.tileSize = {{ tileSize }};
+	      selectTile(vx,vy,tileSize,zz);
           });
 
 
@@ -220,6 +232,8 @@
         var northEast = map.unproject([{{ maxXrange }}, {{ minXrange }}], map.getMaxZoom());
         map.setMaxBounds(new L.LatLngBounds(southWest, northEast));
 
+      L.control.slideMenu('<p>test</p>', {'icon': 'fa-question'}).addTo(map);
+      map.addControl(new L.Control.Fullscreen());
         L.easyButton( '<span class="star">&starf;</span>', function(){
           if (layer.options.inv == 0) {
             layer.options.inv = 1 ;
@@ -228,10 +242,36 @@
             layer.options.inv = 0;
           }
           layer.redraw();
-        }).addTo(map);
+      }, 'Invert colors').addTo(map);
 
+      L.easyButton( '<i class="myhelp fa fa-random" aria-hidden="true"></i>', function(){
+          random();
+      }, 'Random').addTo(map);
+      L.easyButton( '<i class="myhelp fa fa-refresh" aria-hidden="true"></i>', function(){
+          redraw();
+      }, 'Redraw').addTo(map);
+      L.easyButton( '<i class="myhelp fa fa-undo" aria-hidden="true"></i>', function(){
+          reset();
+      }, 'Reset').addTo(map);
 
+     var contentBottom = '' ;
 
+    {% for idx, cl in enumerate(classes) %}
+    contentBottom += '<button id="button_{{ idx }}" onclick="custom({{ list(cl.values())[0] }})">{{ list(cl.keys())[0] }}({{ list(cl.values())[0] }})</button>'
+    {% end %}
+
+      L.control.custom({
+          position: 'bottomright',
+          content : contentBottom,
+          classes : 'btn-group-vertical btn-group-sm',
+          style   :
+          {
+              margin: '10px',
+              padding: '0px 0 0 0',
+              cursor: 'pointer',
+          },
+      })
+      .addTo(map);
 
         function custom(val) {
           var valid = window.validClassesCode.includes(val);
@@ -243,7 +283,7 @@
             else {
             window.classifiedTiles[window.selected] = {
                 'class'  : val,
-                'polygon': L.polygon(window.coords, {color: window.colors[val],  fillOpacity: 0.12}).bindTooltip("my tooltip") };
+                'polygon': L.polygon(window.coords, {color: window.colors[val],  fillOpacity: 0.12}).bindTooltip(window.classesName[val]) };
             map.removeLayer(window.polygon);
             map.removeLayer(window.classifiedTiles[window.selected].polygon);
             map.addLayer(window.classifiedTiles[window.selected].polygon);

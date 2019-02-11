@@ -1,8 +1,8 @@
 dataname: 'test'
 path: '/home/matias/DES/box10/images'
 #path: '/home/matias/Downloads/sample/sampled_galaxies/sampled'
-nimages: 900
-xdim: 30
+nimages: 1400
+xdim: 50
 ydim: 30
 tileSize: 256
 #minZoom: 0
