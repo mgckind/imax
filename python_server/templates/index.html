@@ -98,6 +98,9 @@
         map.addLayer(window.polygon);
         //map.keyboard.disable();
 
+        window.tileSize = {{ tileSize }};
+        window.loaded_data = false;
+        window.toggle_on = false;
         window.colors = ['pink','sienna','cyan','olive','azure','red', 'blue', 'orange', 'magenta', 'yellow'];
         window.classesName = new Array(10);
         window.validClassesCode = []
@@ -106,6 +109,7 @@
         window.classesName[{{ list(cl.values())[0] }}] = '{{ list(cl.keys())[0] }}';
        {% end %}
        window.classifiedTiles = {};
+       toggle_classes();
 
 
         function getCoords(vx,vy,tileSize){
@@ -164,7 +168,6 @@
           window.zz = map.getZoom();
           window.vx = Math.floor(dd.x*{{ tilesX }});
           window.vy = Math.floor(dd.y*{{ tilesY }});
-          window.tileSize = {{ tileSize }};
 	      selectTile(vx,vy,tileSize,zz);
           });
 
@@ -174,7 +177,6 @@
           window.zz = map.getZoom();
           window.vx = Math.floor(dd.x*{{ tilesX }});
           window.vy = Math.floor(dd.y*{{ tilesY }});
-          window.tileSize = {{ tileSize }};
 	      selectTile(vx,vy,tileSize,zz);
           });
 
@@ -184,7 +186,6 @@
              window.zz = map.getZoom();
              window.vx = Math.floor(dd.x*{{ tilesX }});
              window.vy = Math.floor(dd.y*{{ tilesY }});
-             window.tileSize = {{ tileSize }};
              selectTile(vx,vy,tileSize,zz);
             });
 
@@ -267,6 +268,10 @@
           reset();
       }, 'Reset').addTo(map);
 
+      L.easyButton( '<i class="myhelp fa fa-eye-slash" aria-hidden="true"></i>', function(){
+          toggle_classes();
+      }, 'Toggle classes on/off').addTo(map);
+
      var contentBottom = '' ;
 
     {% for idx, cl in enumerate(classes) %}
@@ -321,6 +326,36 @@
 
       }; // clear_selected
 
+
+      function toggle_classes(){
+          if (!window.loaded_data){
+         $.get("{{ serverHost }}:{{ serverPort }}/getall", function(data){
+             console.log('Getting data from server');
+            for (i=0; i < data.names.length; i++) {
+                var val = parseInt(data.classes[i])
+                var tcoords = getCoords(parseInt(data.vx[i]),parseInt(data.vy[i]), window.tileSize);
+                window.classifiedTiles[data.names[i]] = {
+                    'class'  : val,
+                    'polygon': L.polygon(tcoords, {color: window.colors[val],  fillOpacity: 0.12}).bindTooltip(window.classesName[val]) };
+                map.removeLayer(window.classifiedTiles[data.names[i]].polygon);
+                map.addLayer(window.classifiedTiles[data.names[i]].polygon);
+            };
+            delete data;
+            window.loaded_data = true;
+            window.toggle_on = true;
+         });
+        }
+        else {
+            console.log(window.toggle_on);
+            if (window.toggle_on) {
+                 for (key in window.classifiedTiles) { map.removeLayer(window.classifiedTiles[key].polygon);}
+             }
+            else {
+                 for (key in window.classifiedTiles) { map.addLayer(window.classifiedTiles[key].polygon);}
+             };
+             window.toggle_on = !window.toggle_on;
+         }
+            };
 
         function random() {
          $.get("{{ serverHost }}:{{ serverPort }}/random");

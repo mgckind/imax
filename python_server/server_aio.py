@@ -96,6 +96,24 @@ async def info(request):
     return response
 
 
+async def infoall(request):
+    conn = sqlite3.connect(dbname)
+    c = conn.cursor()
+    c.execute("SELECT id,name,class FROM IMAGES where class >= 0")
+    allreturn = c.fetchall()
+    logging.info("Getting info for all {} classified tiles".format(len(allreturn)))
+    st = 200
+    vx = [i[0] % NX for i in allreturn]
+    vy = [i[0] // NX for i in allreturn]
+    names = [i[1] for i in allreturn]
+    classids = [i[2] for i in allreturn]
+    response = web.json_response({'names': names, 'classes': classids, 'vx': vx, 'vy': vy, 'status': st})
+    conn.commit()
+    conn.close()
+    return response
+
+
+
 async def filter(request):
     global idx
     print("FILTER: ")
@@ -280,7 +298,7 @@ def initialize(images, nimages, NX, NY, NTILES):
 
 
 if __name__ == "__main__":
-    global idx, images, dbname
+    global idx, images, dbname, NX, NY
     logging.basicConfig(level=logging.DEBUG)
     images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
         "config.yaml"
@@ -301,12 +319,14 @@ if __name__ == "__main__":
     rnn = cors.add(app.router.add_resource("/random"))
     inf = cors.add(app.router.add_resource("/info"))
     upd = cors.add(app.router.add_resource("/update"))
+    get = cors.add(app.router.add_resource("/getall"))
     sor = cors.add(app.router.add_resource("/sort"))
     fil = cors.add(app.router.add_resource("/filter"))
     res = cors.add(app.router.add_resource("/reset"))
     red = cors.add(app.router.add_resource("/redraw"))
     cors.add(rnn.add_route("GET", random))
     cors.add(inf.add_route("GET", info))
+    cors.add(get.add_route("GET", infoall))
     cors.add(upd.add_route("GET", update))
     cors.add(sor.add_route("GET", sort))
     cors.add(fil.add_route("GET", filter))
