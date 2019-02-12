@@ -6,6 +6,7 @@
     <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <link rel="stylesheet" href="static/plugins/L.Control.SlideMenu.css">
     <link rel="stylesheet" href="static/plugins/easy-button.css">
+    <link rel="stylesheet" href="static/cutouts.css">
     <script src="static/plugins/easy-button.js"></script>
     <script src="static/plugins/Leaflet.Control.Custom.js"></script>
     <script src="static/plugins/L.Control.SlideMenu.js"></script>
@@ -15,29 +16,12 @@
 
 
   <style>
-      #map{ height: {{ heightDiv }}px ; width: {{ widthDiv }}px;}
-      .leaflet-container {
-        background: #dddddd;
-    }
+    #map{ height: {{ heightDiv }}px ; width: {{ widthDiv }}px;}
     .box {
       width: {{ widthDiv }}px;
       height: {{ heightDiv }}px;
       overflow: hidden;
     }
-
-    .info {
-        padding: 6px 8px;
-        font: 14px/16px Arial, Helvetica, sans-serif;
-        background: white;
-        background: rgba(255,255,255,0.8);
-        box-shadow: 0 0 15px rgba(0,0,0,0.2);
-        border-radius: 5px;
-    }
-    .info h4 {
-        margin: 0 0 5px;
-        color: #777;
-    }
-
     </style>
 </head>
 
@@ -101,6 +85,7 @@
         window.tileSize = {{ tileSize }};
         window.loaded_data = false;
         window.toggle_on = false;
+        window.help_on = false;
         window.colors = ['pink','sienna','cyan','olive','azure','red', 'blue', 'orange', 'magenta', 'yellow'];
         window.classesName = new Array(10);
         window.validClassesCode = []
@@ -171,14 +156,6 @@
 	      selectTile(vx,vy,tileSize,zz);
           });
 
-        map.on('click', function(event){
-          var pp = event.latlng;
-          var dd = map.project(L.latLng(pp.lat,pp.lng),map.getMaxZoom);
-          window.zz = map.getZoom();
-          window.vx = Math.floor(dd.x*{{ tilesX }});
-          window.vy = Math.floor(dd.y*{{ tilesY }});
-	      selectTile(vx,vy,tileSize,zz);
-          });
 
           map.on('contextmenu', function(event){
              var pp = event.latlng;
@@ -227,6 +204,12 @@
             };
 
             if (event.originalEvent.key == 'c') {clear_selected();};
+            if (event.originalEvent.key == 't') {toggle_classes();};
+            if (event.originalEvent.key == 'f') {map.toggleFullscreen();};
+            if (event.originalEvent.key == 'h') {
+              if (window.help_on) {sideHelp._animate(sideHelp._menu, -300, 0, true, true, 30);}
+              else {sideHelp._animate(sideHelp._menu, 0, -300, false, true, 30)}
+              window.help_on = !window.help_on;};
 
             if (event.originalEvent.key == '0') {custom(0);};
             if (event.originalEvent.key == '1') {custom(1);};
@@ -246,7 +229,7 @@
         var northEast = map.unproject([{{ maxXrange }}, {{ minXrange }}], map.getMaxZoom());
         map.setMaxBounds(new L.LatLngBounds(southWest, northEast));
 
-      L.control.slideMenu(contentHelp, {'icon': 'fa-question'}).addTo(map);
+      var sideHelp = L.control.slideMenu(contentHelp, {'icon': 'fa-question'}).addTo(map);
       map.addControl(new L.Control.Fullscreen());
         L.easyButton( '<i class="myhelp fa fa-star-half-o" aria-hidden="true"></i>', function(){
           if (layer.options.inv == 0) {
@@ -272,16 +255,20 @@
           toggle_classes();
       }, 'Toggle classes on/off').addTo(map);
 
+      L.easyButton( '<i class="myhelp fa fa-filter" aria-hidden="true"></i>', function(){
+          filter();
+      }, 'Filter').addTo(map);
+
      var contentBottom = '' ;
 
     {% for idx, cl in enumerate(classes) %}
-    contentBottom += '<button id="button_{{ idx }}" onclick="custom({{ list(cl.values())[0] }})">{{ list(cl.keys())[0] }}({{ list(cl.values())[0] }})</button>'
+    contentBottom += '<button id="button_{{ list(cl.values())[0] }}" onclick="custom({{ list(cl.values())[0] }})">{{ list(cl.keys())[0] }}({{ list(cl.values())[0] }})</button>'
     {% end %}
 
       L.control.custom({
           position: 'bottomright',
           content : contentBottom,
-          classes : 'btn-group-vertical btn-group-sm',
+          classes : 'btn-group',
           style   :
           {
               margin: '10px',
@@ -358,6 +345,7 @@
             };
 
         function random() {
+         window.loaded_data = false;
          $.get("{{ serverHost }}:{{ serverPort }}/random");
           location.reload(true);
           map.removeLayer(layer);

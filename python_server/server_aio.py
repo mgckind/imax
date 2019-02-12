@@ -8,6 +8,7 @@ import os
 import sys
 import glob
 import sqlite3
+import random as rn
 import yaml
 import timeit
 import coloredlogs
@@ -99,14 +100,16 @@ async def info(request):
 async def infoall(request):
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
-    c.execute("SELECT id,name,class FROM IMAGES where class >= 0")
+    c.execute("SELECT a.id,a.name,a.class,b.vx,b.vy FROM IMAGES a, COORDS b where class >= 0 and display = 1 and a.id = b.id")
     allreturn = c.fetchall()
     logging.info("Getting info for all {} classified tiles".format(len(allreturn)))
     st = 200
-    vx = [i[0] % NX for i in allreturn]
-    vy = [i[0] // NX for i in allreturn]
+    # vx = [i[0] % NX for i in allreturn]
+    # vy = [i[0] // NX for i in allreturn]
     names = [i[1] for i in allreturn]
     classids = [i[2] for i in allreturn]
+    vx = [i[3] for i in allreturn]
+    vy = [i[4] for i in allreturn]
     response = web.json_response({'names': names, 'classes': classids, 'vx': vx, 'vy': vy, 'status': st})
     conn.commit()
     conn.close()
@@ -135,15 +138,25 @@ async def filter(request):
 async def random(request):
     global idx
     logging.info("RANDOMIZE: ")
+    conn = sqlite3.connect(dbname)
+    c = conn.cursor()
+    c.execute("SELECT id FROM IMAGES where display = 1")
+    all_ids = c.fetchall()
+    all_displayed = [i[0] for i in all_ids]
     temp = np.zeros(NX * NY, dtype="int") - 1
     nim = rn.randint(10, nimages)
-    image_idx = np.arange(nim)
-    rn.shuffle(image_idx)
+    image_idx = rn.sample(all_displayed, nim)
     temp[: len(image_idx)] = image_idx
     temp = temp.reshape((NY, NX))
     idx = np.pad(
         temp, ((0, NTILES - NY), (0, NTILES - NX)), "constant", constant_values=-1
     )
+    c.execute("DELETE FROM COORDS")
+    for i in image_idx:
+        vy, vx = np.where(idx == i)
+        c.execute("INSERT INTO COORDS VALUES ({},{},{})".format(i, vx[0], vy[0]))
+    conn.commit()
+    conn.close()
     logging.info(" {} images displayed".format(nim))
     response = web.Response(text="", status=200)
     return response
@@ -167,7 +180,7 @@ async def redraw(request):
     logging.info("REDRAW: ")
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
-    c.execute("SELECT name FROM IMAGES where class = 0")
+    c.execute("SELECT name FROM IMAGES where class = 0 and display = 1")
     removeids = c.fetchall()
     for n in removeids:
         blacklist.append(n[0])
@@ -250,7 +263,7 @@ def read_config(conf):
             NTILES, MAXZOOM, NTILES * TILESIZE
         )
     )
-    logging.info('NX x NY = {} x {}'.format(NX,NY))
+    logging.info('NX x NY = {} x {}'.format(NX, NY))
     return (
         images,
         total_images,
@@ -272,12 +285,16 @@ def create_db(filedb):
         "create table if not exists IMAGES "
         "(id int primary key, display int default 1, name text, class int default -1)"
     )
+    c.execute(
+        "create table if not exists COORDS "
+        "(id int primary key, vx int, vy int)"
+    )
     conn.commit()
     conn.close()
 
 
 def initiate_db(filedb, images):
-    chunk = [(i, 1, os.path.basename(images[i]), -1) for i in range(len(images))]
+    chunk = [(i, 0, os.path.basename(images[i]), -1) for i in range(len(images))]
     conn = sqlite3.connect(filedb)
     c = conn.cursor()
     c.executemany("INSERT or REPLACE INTO IMAGES VALUES (?,?,?,?)", chunk)
@@ -287,13 +304,23 @@ def initiate_db(filedb, images):
 
 def initialize(images, nimages, NX, NY, NTILES):
     temp = np.zeros(NX * NY, dtype="int") - 1
-    image_idx = np.arange(nimages)
+    image_idx = rn.sample(range(len(images)), nimages)  # np.arange(nimages)
+    conn = sqlite3.connect(dbname)
+    c = conn.cursor()
+    c.execute("UPDATE IMAGES SET display = 0")
+    c.execute("DELETE FROM COORDS")
     temp[: len(image_idx)] = image_idx
     temp = temp.reshape((NY, NX))
     idx = np.pad(
         temp, ((0, NTILES - NY), (0, NTILES - NX)), "constant", constant_values=-1
     )
     blacklist = []
+    for i in image_idx:
+        c.execute("UPDATE IMAGES SET display = 1 where id = {}".format(i))
+        vy, vx = np.where(idx == i)
+        c.execute("INSERT INTO COORDS VALUES ({},{},{})".format(i, vx[0], vy[0]))
+    conn.commit()
+    conn.close()
     return idx, blacklist
 
 
@@ -303,9 +330,9 @@ if __name__ == "__main__":
     images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
         "config.yaml"
     )
-    idx, blacklist = initialize(images, nimages, NX, NY, NTILES)
     create_db(dbname)
     initiate_db(dbname, images)
+    idx, blacklist = initialize(images, nimages, NX, NY, NTILES)
     # Web app
     app = web.Application()
     cors = aiohttp_cors.setup(app)

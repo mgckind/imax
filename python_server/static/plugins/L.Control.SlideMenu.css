@@ -2,11 +2,6 @@
     cursor: pointer;
 }
 
-.myhelp {
-    color: black;
-    font-size: 15px;
-    margin-top: 8px;
-}
 
 .leaflet-menu{
     position: absolute;

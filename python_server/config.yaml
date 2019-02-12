@@ -1,9 +1,9 @@
 dataname: 'test'
 path: '/home/matias/DES/box10/images'
 #path: '/home/matias/Downloads/sample/sampled_galaxies/sampled'
-nimages: 1400
-xdim: 50
-ydim: 30
+nimages: 400
+xdim: 20
+ydim: 20
 tileSize: 256
 #minZoom: 0
 #maxZoom: 7
@@ -28,4 +28,10 @@ classes:
     - Elliptical: 9
     - Spiral: 8
     - Other: 7
+    - Irregular: 6
+    - TypeI: 5
+    - Type2: 4
+    - Barred: 3
+    - Nebula: 2
+    - Star: 1
     - Delete: 0
