@@ -116,21 +116,28 @@ async def infoall(request):
     return response
 
 
-
 async def filter(request):
     global idx
     print("FILTER: ")
-    image_idx = np.where(df_final.MAG_I.values > 17.5)[0]
-    print(df_final.ID.iloc[image_idx])
-    print(len(image_idx))
-    print(image_idx[0:10])
+    conn = sqlite3.connect(dbname)
+    c = conn.cursor()
+    c.execute("SELECT id FROM IMAGES where display = 1 and class > 0")
+    all_ids = c.fetchall()
+    all_filtered = [i[0] for i in all_ids]
     temp = np.zeros(NX * NY, dtype="int") - 1
+    image_idx = all_filtered
     temp[: len(image_idx)] = image_idx
     temp = temp.reshape((NY, NX))
     idx = np.pad(
         temp, ((0, NTILES - NY), (0, NTILES - NX)), "constant", constant_values=-1
     )
-    print(idx[0][0:10])
+    c.execute("DELETE FROM COORDS")
+    for i in image_idx:
+        vy, vx = np.where(idx == i)
+        c.execute("INSERT INTO COORDS VALUES ({},{},{})".format(i, vx[0], vy[0]))
+    conn.commit()
+    conn.close()
+    logging.info(" {} images filtered and displayed".format(len(image_idx)))
     response = web.Response(text="", status=200)
     return response
 
@@ -175,19 +182,27 @@ async def reset(request):
 
 
 async def redraw(request):
-    global idx, blacklist
-    blacklist = []
+    global idx
     logging.info("REDRAW: ")
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
-    c.execute("SELECT name FROM IMAGES where class = 0 and display = 1")
-    removeids = c.fetchall()
-    for n in removeids:
-        blacklist.append(n[0])
-    response = web.Response(text="", status=200)
+    c.execute("SELECT id FROM IMAGES where display = 1 and class != 0")
+    all_ids = c.fetchall()
+    all_displayed = [i[0] for i in all_ids]
+    temp = np.zeros(NX * NY, dtype="int") - 1
+    image_idx = all_displayed
+    temp[: len(image_idx)] = image_idx
+    temp = temp.reshape((NY, NX))
+    idx = np.pad(
+        temp, ((0, NTILES - NY), (0, NTILES - NX)), "constant", constant_values=-1
+    )
+    c.execute("DELETE FROM COORDS")
+    for i in image_idx:
+        vy, vx = np.where(idx == i)
+        c.execute("INSERT INTO COORDS VALUES ({},{},{})".format(i, vx[0], vy[0]))
     conn.commit()
     conn.close()
-
+    logging.info(" {} images displayed".format(len(all_displayed)))
     response = web.Response(text="", status=200)
     return response
 

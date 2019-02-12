@@ -372,6 +372,9 @@
           }
         function filter() {
          $.get("{{ serverHost }}:{{ serverPort }}/filter");
+          location.reload(true);
+          map.removeLayer(layer);
+          map.addLayer(layer);
           layer.redraw();
           }
       </script>
