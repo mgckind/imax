@@ -124,7 +124,10 @@ async def filter(request):
     logging.info(checked)
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
-    c.execute("SELECT id FROM IMAGES where display = 1 and class in ({}) order by id".format(','.join(checked)))
+    if len(checked) == 0:
+        c.execute("SELECT id FROM IMAGES where display = 1 order by id")
+    else:
+        c.execute("SELECT id FROM IMAGES where display = 1 and class in ({}) order by id".format(','.join(checked)))
     all_ids = c.fetchall()
     all_filtered = [i[0] for i in all_ids]
     if len(all_filtered) > 0:

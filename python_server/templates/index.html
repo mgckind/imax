@@ -283,6 +283,7 @@
     {% for idx, cl in enumerate(classes) %}
     contentBoxes += '<input type="checkbox" id="checkbox_{{ list(cl.values())[0] }}" >{{ list(cl.values())[0] }}'
     {% end %}
+    contentBoxes += '<input type="checkbox" id="checkbox_noclass"/>-1'
 
       L.control.custom({
           position: 'bottomright',
@@ -412,6 +413,9 @@
                   if (temp.checked){ check += i+','; window.checked.push(i);}
               }
           };
+          var temp = document.getElementById("checkbox_noclass");
+          if (temp.checked){ check += -1+',';}
+
           $.get("{{ serverHost }}:{{ serverPort }}/filter", {checked:check});
           location.reload(true);
           map.removeLayer(layer);
