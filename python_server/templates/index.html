@@ -40,6 +40,7 @@
       		}
       	};
 
+
       var map = L.map('map', {
         dragging: true,
         zoomDelta: 1,
@@ -260,9 +261,14 @@
       }, 'Filter').addTo(map);
 
      var contentBottom = '' ;
+     var contentBoxes = ' Filter: ' ;
 
     {% for idx, cl in enumerate(classes) %}
     contentBottom += '<button id="button_{{ list(cl.values())[0] }}" onclick="custom({{ list(cl.values())[0] }})">{{ list(cl.keys())[0] }}({{ list(cl.values())[0] }})</button>'
+    {% end %}
+
+    {% for idx, cl in enumerate(classes) %}
+    contentBoxes += '<input type="checkbox" id="checkbox_{{ list(cl.values())[0] }}" >{{ list(cl.values())[0] }}'
     {% end %}
 
       L.control.custom({
@@ -272,6 +278,20 @@
           style   :
           {
               margin: '10px',
+              padding: '0px 0 0 0',
+              cursor: 'pointer',
+          },
+      })
+      .addTo(map);
+
+
+      L.control.custom({
+          position: 'bottomleft',
+          content : contentBoxes,
+          classes : 'btn-group',
+          style   :
+          {
+              margin: '5px',
               padding: '0px 0 0 0',
               cursor: 'pointer',
           },
@@ -371,7 +391,14 @@
           layer.redraw();
           }
         function filter() {
-         $.get("{{ serverHost }}:{{ serverPort }}/filter");
+            var check = ''
+          for (i=0; i<10; i++) {
+              var temp = document.getElementById("checkbox_"+i);
+              if (temp) {
+                  if (temp.checked){ check += i+',';}
+              }
+          };
+          $.get("{{ serverHost }}:{{ serverPort }}/filter", {checked:check});
           location.reload(true);
           map.removeLayer(layer);
           map.addLayer(layer);

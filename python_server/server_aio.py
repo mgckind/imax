@@ -117,13 +117,23 @@ async def infoall(request):
 
 
 async def filter(request):
-    global idx
-    print("FILTER: ")
+    global idx,NX,NY,NTILES
+    logging.info("FILTER: ")
+    checked = request.query["checked"]
+    checked = checked.split(',')[:-1]
+    logging.info(checked)
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
-    c.execute("SELECT id FROM IMAGES where display = 1 and class > 0")
+    c.execute("SELECT id FROM IMAGES where display = 1 and class in ({})".format(','.join(checked)))
     all_ids = c.fetchall()
     all_filtered = [i[0] for i in all_ids]
+    if len(all_filtered) > 0:
+        default_nx = int(np.ceil(np.sqrt(len(all_filtered))))
+        NX = default_nx
+        NY = default_nx
+        update_config(NX, NY, len(all_filtered))
+        NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
+        logging.info('NX x NY = {} x {}. NTILES = {}'.format(NX, NY, NTILES))
     temp = np.zeros(NX * NY, dtype="int") - 1
     image_idx = all_filtered
     temp[: len(image_idx)] = image_idx
@@ -143,15 +153,21 @@ async def filter(request):
 
 
 async def random(request):
-    global idx
+    global idx,NX, NY, NTILES
     logging.info("RANDOMIZE: ")
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
     c.execute("SELECT id FROM IMAGES where display = 1")
     all_ids = c.fetchall()
     all_displayed = [i[0] for i in all_ids]
-    temp = np.zeros(NX * NY, dtype="int") - 1
     nim = rn.randint(10, nimages)
+    default_nx = int(np.ceil(np.sqrt(nim)))
+    NX = default_nx
+    NY = default_nx
+    update_config(NX, NY, nim)
+    NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
+    logging.info('NX x NY = {} x {}. NTILES = {}'.format(NX, NY, NTILES))
+    temp = np.zeros(NX * NY, dtype="int") - 1
     image_idx = rn.sample(all_displayed, nim)
     temp[: len(image_idx)] = image_idx
     temp = temp.reshape((NY, NX))
@@ -173,7 +189,7 @@ async def reset(request):
     global idx, blacklist, images, dbname
     logging.info("RESET: ")
     images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
-        "config.yaml"
+        "config.yaml", force_copy=True
     )
     idx, blacklist = initialize(images, nimages, NX, NY, NTILES)
     # initiate_db(dbname, images)
@@ -182,13 +198,19 @@ async def reset(request):
 
 
 async def redraw(request):
-    global idx
+    global idx, NX, NY, NTILES
     logging.info("REDRAW: ")
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
     c.execute("SELECT id FROM IMAGES where display = 1 and class != 0")
     all_ids = c.fetchall()
     all_displayed = [i[0] for i in all_ids]
+    default_nx = int(np.ceil(np.sqrt(len(all_displayed))))
+    NX = default_nx
+    NY = default_nx
+    update_config(NX, NY, len(all_displayed))
+    NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
+    logging.info('NX x NY = {} x {}. NTILES = {}'.format(NX, NY, NTILES))
     temp = np.zeros(NX * NY, dtype="int") - 1
     image_idx = all_displayed
     temp[: len(image_idx)] = image_idx
@@ -237,7 +259,18 @@ async def main(request):
     return response
 
 
-def read_config(conf):
+def update_config(NX, NY, nimages):
+    yaml_file = dbname.split('.')[0] + '.yaml'
+    with open(yaml_file, 'r') as buf:
+        cfg = yaml.load(buf)
+    cfg['xdim'] = NX
+    cfg['ydim'] = NY
+    cfg['nimages'] = nimages
+    with open(yaml_file, 'w') as buf:
+        buf.write(yaml.dump(cfg))
+
+
+def read_config(conf, force_copy=False):
     with open(conf, "r") as cfg:
         config = yaml.load(cfg)
     images = glob.glob(os.path.join(config["path"], "*.png"))
@@ -270,6 +303,13 @@ def read_config(conf):
         )
         NX = default_nx
         NY = default_nx
+    config["xdim"] = NX
+    config["ydim"] = NY
+    config["nimages"] = nimages
+    outyaml = config["dataname"]+'.yaml'
+    if force_copy:
+        with open(outyaml, 'w') as out:
+            out.write(yaml.dump(config))
     NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
     MAXZOOM = np.log2(NTILES)
     TILESIZE = config["tileSize"]
@@ -340,10 +380,10 @@ def initialize(images, nimages, NX, NY, NTILES):
 
 
 if __name__ == "__main__":
-    global idx, images, dbname, NX, NY
+    global idx, images, dbname, NX, NY, NTILES
     logging.basicConfig(level=logging.DEBUG)
     images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
-        "config.yaml"
+        "config.yaml", force_copy=True
     )
     create_db(dbname)
     initiate_db(dbname, images)

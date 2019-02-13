@@ -1,14 +1,22 @@
 import tornado.ioloop
 import tornado.web
 import yaml
+import os
 import numpy as np
 from server_aio import read_config
 
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
+        with open('config.yaml', 'r') as cc:
+            cf = yaml.load(cc)
+        if os.path.exists(cf['dataname']+'.yaml'):
+            inyaml = cf['dataname']+'.yaml'
+        else:
+            inyaml = 'config.yaml'
+        print('Reading {}'.format(inyaml))
         images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
-            "config.yaml"
+            inyaml
         )
         del images
         config["serverPort"] = config["server"]["port"]
@@ -22,7 +30,7 @@ class MainHandler(tornado.web.RequestHandler):
         config["tilesX"] = ntiles
         config["tilesY"] = ntiles
         config["maxZoom"] = int(np.log2(ntiles))
-        config["minZoom"] = config["maxZoom"] - 4
+        config["minZoom"] = max(config["maxZoom"] - 4, 0)
         tilesize = config["tileSize"]
         config["maxXrange"] = tilesize * nx
         config["maxYrange"] = tilesize * ny
