@@ -97,7 +97,6 @@
        window.classifiedTiles = {};
        toggle_classes();
 
-
         function getCoords(vx,vy,tileSize){
             var temp_coords = [
             map.unproject([vx*tileSize, vy*tileSize], map.getMaxZoom()),
@@ -205,7 +204,7 @@
             };
 
             if (event.originalEvent.key == 'c') {clear_selected();};
-            if (event.originalEvent.key == 't') {toggle_classes();};
+            if (event.originalEvent.key == 't') {toggleClasses.button.click();};
             if (event.originalEvent.key == 'f') {map.toggleFullscreen();};
             if (event.originalEvent.key == 'h') {
               if (window.help_on) {sideHelp._animate(sideHelp._menu, -300, 0, true, true, 30);}
@@ -242,23 +241,37 @@
           layer.redraw();
       }, 'Invert colors').addTo(map);
 
+    var toggleClasses = L.easyButton({
+              states: [{
+                stateName: 'remove-classes',
+                icon: '<i class="myhelp fa fa-eye" aria-hidden="true"></i>',
+                title: 'Toggle classes off',
+                onClick: function(control) {
+                  toggle_classes();
+                  control.state('add-classes');
+                }
+              }, {
+                icon: '<i class="myhelp fa fa-eye-slash" aria-hidden="true"></i>',
+                stateName: 'add-classes',
+                onClick: function(control) {
+                  toggle_classes();
+                  control.state('remove-classes');
+                },
+                title: 'Toggle classes on'
+              }]
+            });
+            toggleClasses.addTo(map);
+
       L.easyButton( '<i class="myhelp fa fa-random" aria-hidden="true"></i>', function(){
-          random();
-      }, 'Random').addTo(map);
-      L.easyButton( '<i class="myhelp fa fa-refresh" aria-hidden="true"></i>', function(){
-          redraw();
-      }, 'Redraw').addTo(map);
-      L.easyButton( '<i class="myhelp fa fa-undo" aria-hidden="true"></i>', function(){
-          reset();
-      }, 'Reset').addTo(map);
-
-      L.easyButton( '<i class="myhelp fa fa-eye-slash" aria-hidden="true"></i>', function(){
-          toggle_classes();
-      }, 'Toggle classes on/off').addTo(map);
-
+          var r = confirm("Are you sure you want to display a new random sample?");
+          if (r) {reset();};
+      }, 'New random set').addTo(map);
       L.easyButton( '<i class="myhelp fa fa-filter" aria-hidden="true"></i>', function(){
           filter();
       }, 'Filter').addTo(map);
+      L.easyButton( '<i class="myhelp fa fa-refresh" aria-hidden="true"></i>', function(){
+          redraw();
+      }, 'Redraw/Reset view').addTo(map);
 
      var contentBottom = '' ;
      var contentBoxes = ' Filter: ' ;
@@ -391,11 +404,12 @@
           layer.redraw();
           }
         function filter() {
-            var check = ''
+            var check = '';
+        window.checked = [];
           for (i=0; i<10; i++) {
               var temp = document.getElementById("checkbox_"+i);
               if (temp) {
-                  if (temp.checked){ check += i+',';}
+                  if (temp.checked){ check += i+','; window.checked.push(i);}
               }
           };
           $.get("{{ serverHost }}:{{ serverPort }}/filter", {checked:check});

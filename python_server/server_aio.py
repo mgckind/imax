@@ -78,7 +78,7 @@ async def info(request):
     x = int(request.query["x"])
     y = int(request.query["y"])
     ic = idx[y][x]
-    c.execute("SELECT name,class FROM IMAGES where id = {}".format(ic))
+    c.execute("SELECT name,class FROM IMAGES where id = {} order by id".format(ic))
     try:
         name, classid = c.fetchone()
         logging.info("Selected: x={}, y={}, ic={}".format(x, y, ic))
@@ -100,7 +100,7 @@ async def info(request):
 async def infoall(request):
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
-    c.execute("SELECT a.id,a.name,a.class,b.vx,b.vy FROM IMAGES a, COORDS b where class >= 0 and display = 1 and a.id = b.id")
+    c.execute("SELECT a.id,a.name,a.class,b.vx,b.vy FROM IMAGES a, COORDS b where class >= 0 and display = 1 and a.id = b.id order by a.id")
     allreturn = c.fetchall()
     logging.info("Getting info for all {} classified tiles".format(len(allreturn)))
     st = 200
@@ -124,7 +124,7 @@ async def filter(request):
     logging.info(checked)
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
-    c.execute("SELECT id FROM IMAGES where display = 1 and class in ({})".format(','.join(checked)))
+    c.execute("SELECT id FROM IMAGES where display = 1 and class in ({}) order by id".format(','.join(checked)))
     all_ids = c.fetchall()
     all_filtered = [i[0] for i in all_ids]
     if len(all_filtered) > 0:
@@ -157,7 +157,7 @@ async def random(request):
     logging.info("RANDOMIZE: ")
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
-    c.execute("SELECT id FROM IMAGES where display = 1")
+    c.execute("SELECT id FROM IMAGES where display = 1 order by id")
     all_ids = c.fetchall()
     all_displayed = [i[0] for i in all_ids]
     nim = rn.randint(10, nimages)
@@ -202,7 +202,7 @@ async def redraw(request):
     logging.info("REDRAW: ")
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
-    c.execute("SELECT id FROM IMAGES where display = 1 and class != 0")
+    c.execute("SELECT id FROM IMAGES where display = 1 and class != 0 order by id")
     all_ids = c.fetchall()
     all_displayed = [i[0] for i in all_ids]
     default_nx = int(np.ceil(np.sqrt(len(all_displayed))))
@@ -364,6 +364,12 @@ def initialize(images, nimages, NX, NY, NTILES):
     c = conn.cursor()
     c.execute("UPDATE IMAGES SET display = 0")
     c.execute("DELETE FROM COORDS")
+    for i in image_idx:
+        c.execute("UPDATE IMAGES SET display = 1 where id = {}".format(i))
+    c.execute("SELECT id FROM IMAGES where display = 1 order by id")
+    all_ids = c.fetchall()
+    all_displayed = [i[0] for i in all_ids]
+    image_idx = all_displayed
     temp[: len(image_idx)] = image_idx
     temp = temp.reshape((NY, NX))
     idx = np.pad(
@@ -371,7 +377,6 @@ def initialize(images, nimages, NX, NY, NTILES):
     )
     blacklist = []
     for i in image_idx:
-        c.execute("UPDATE IMAGES SET display = 1 where id = {}".format(i))
         vy, vx = np.where(idx == i)
         c.execute("INSERT INTO COORDS VALUES ({},{},{})".format(i, vx[0], vy[0]))
     conn.commit()
