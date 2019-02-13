@@ -14,7 +14,6 @@ import timeit
 import coloredlogs
 import logging
 import asyncio
-import pandas as pd
 import random as rn
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
