@@ -15,6 +15,7 @@ import coloredlogs
 import logging
 import asyncio
 import random as rn
+import requests
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 
@@ -194,22 +195,23 @@ async def reset(request):
         "config.yaml", force_copy=True
     )
     idx, blacklist = initialize(images, nimages, NX, NY, NTILES)
+    update_config(NX, NY, nimages)
     # initiate_db(dbname, images)
     response = web.Response(text="", status=200)
     return response
 
 
 async def redraw(request):
-    global idx, NX, NY, NTILES
+    global idx, NX, NY, NTILES, dbname
     logging.info("REDRAW: ")
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
     c.execute("SELECT id FROM IMAGES where display = 1 and class != 0 order by id")
     all_ids = c.fetchall()
     all_displayed = [i[0] for i in all_ids]
-    default_nx = int(np.ceil(np.sqrt(len(all_displayed))))
-    NX = default_nx
-    NY = default_nx
+    images0, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
+        "config.yaml", n_images=len(all_displayed))
+    del images0
     update_config(NX, NY, len(all_displayed))
     NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
     logging.info('NX x NY = {} x {}. NTILES = {}'.format(NX, NY, NTILES))
@@ -262,6 +264,11 @@ async def main(request):
 
 
 def update_config(NX, NY, nimages):
+    with open("config.yaml", "r") as cfg:
+        config = yaml.load(cfg)
+    port = config["client"]["port"]
+    host = config["client"]["host"]
+    req = requests.post('{}:{}/config'.format(host, port), data={'nx': NX, 'ny': NY, 'nim': nimages})
     yaml_file = dbname.split('.')[0] + '.yaml'
     with open(yaml_file, 'r') as buf:
         cfg = yaml.load(buf)
@@ -272,17 +279,23 @@ def update_config(NX, NY, nimages):
         buf.write(yaml.dump(cfg))
 
 
-def read_config(conf, force_copy=False):
+def read_config(conf, force_copy=False, n_images=None, no_read_images=False):
     with open(conf, "r") as cfg:
         config = yaml.load(cfg)
-    images = glob.glob(os.path.join(config["path"], "*.png"))
-    total_images = len(images)
+    if no_read_images:
+        images = []
+        total_images = 1e9
+    else:
+        images = glob.glob(os.path.join(config["path"], "*.png"))
+        total_images = len(images)
     if total_images == 0:
         logging.error("Images not found!. Please check path")
         sys.exit(0)
     dbname = config["dataname"] + ".db"
     logging.info("Total Images in path: {}".format(total_images))
     nimages = int(config["nimages"])
+    if n_images is not None:
+        nimages = n_images
     if nimages <= 0:
         logging.error("nimages must be positive")
         sys.exit(0)

@@ -1,20 +1,12 @@
 dataname: 'test'
 path: '/home/matias/DES/box10/images'
 #path: '/home/matias/Downloads/sample/sampled_galaxies/sampled'
-nimages: 1100
-xdim: 20
-ydim: 20
+nimages: 1500
+xdim: 100
+ydim: 30
 tileSize: 256
-#minZoom: 0
-#maxZoom: 7
-#tilesX: 128
-#tilesY: 128
-#maxXrange: 20480
-#maxYrange: 5120
 minXrange: 0
 minYrange: 0
-#widthDiv: 1280
-#heightDiv: 512
 #### SERVER
 server:
   host: 'http://localhost'
@@ -22,6 +14,7 @@ server:
   #workers: None # None will default to the workers in the machine
 #### CLIENT
 client:
+  host: 'http://localhost'
   port: 8000
 #### classes
 classes:

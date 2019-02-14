@@ -6,3 +6,4 @@ coloredlogs
 asyncio
 numpy
 tornado
+requests

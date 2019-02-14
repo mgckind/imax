@@ -391,15 +391,17 @@
           layer.redraw();
           }
         function redraw() {
-         $.get("{{ serverHost }}:{{ serverPort }}/redraw");
+         $.get("{{ serverHost }}:{{ serverPort }}/redraw", function(){
           location.reload(true);
+             });
           map.removeLayer(layer);
           map.addLayer(layer);
           layer.redraw();
           }
         function reset() {
-         $.get("{{ serverHost }}:{{ serverPort }}/reset");
-          location.reload(true);
+         $.get("{{ serverHost }}:{{ serverPort }}/reset", function(){
+             location.reload(true);
+             });
           map.removeLayer(layer);
           map.addLayer(layer);
           layer.redraw();
@@ -416,11 +418,12 @@
           var temp = document.getElementById("checkbox_noclass");
           if (temp.checked){ check += -1+',';}
 
-          $.get("{{ serverHost }}:{{ serverPort }}/filter", {checked:check});
-          location.reload(true);
-          map.removeLayer(layer);
-          map.addLayer(layer);
-          layer.redraw();
+          $.get("{{ serverHost }}:{{ serverPort }}/filter", {checked:check}, function(){
+              map.removeLayer(layer);
+              map.addLayer(layer);
+              layer.redraw();
+              location.reload(true);
+              });
           }
       </script>
 

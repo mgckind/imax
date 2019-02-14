@@ -8,15 +8,13 @@ from server_aio import read_config
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        with open('config.yaml', 'r') as cc:
-            cf = yaml.load(cc)
-        if os.path.exists(cf['dataname']+'.yaml'):
-            inyaml = cf['dataname']+'.yaml'
+        if os.path.exists('local_config.yaml'):
+            inyaml = 'local_config.yaml'
         else:
             inyaml = 'config.yaml'
         print('Reading {}'.format(inyaml))
         images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
-            inyaml
+            inyaml, no_read_images=True
         )
         del images
         config["serverPort"] = config["server"]["port"]
@@ -41,9 +39,30 @@ class MainHandler(tornado.web.RequestHandler):
         self.render("index.html", **config)
 
 
+class ConfigHandler(tornado.web.RequestHandler):
+    def post(self):
+        nx = int(self.get_argument('nx'))
+        ny = int(self.get_argument('ny'))
+        nim = int(self.get_argument('nim'))
+        yaml_file = 'local_config.yaml'
+        print(' From config, NX = {}, NY={}. {} nimages'.format(nx, ny, nim))
+        with open("config.yaml", "r") as cfg:
+            config = yaml.load(cfg)
+        config['xdim'] = nx
+        config['ydim'] = ny
+        config['nimages'] = nim
+        with open(yaml_file, 'w') as buf:
+            buf.write(yaml.dump(config))
+        self.set_status(200)
+        self.finish()
+
+
 def make_app():
     settings = {"template_path": "templates/", "static_path": "static/", "debug": True}
-    return tornado.web.Application([(r"/", MainHandler)], **settings)
+    return tornado.web.Application([
+        (r"/", MainHandler),
+        (r"/config", ConfigHandler)
+        ], **settings)
 
 
 if __name__ == "__main__":
