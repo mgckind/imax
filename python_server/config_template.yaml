@@ -1,5 +1,6 @@
 dataname: 'test'
-path: '/home/matias/DES/box10/images'
+path: '/home/matias/DATA/Dog-Cat-Classifier/Data/Train_Data/all'
+#path: '/home/matias/DES/box10/images'
 #path: '/home/matias/Downloads/sample/sampled_galaxies/sampled'
 nimages: 1500
 xdim: 100
