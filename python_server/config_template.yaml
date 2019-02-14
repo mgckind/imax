@@ -10,7 +10,8 @@ minXrange: 0
 minYrange: 0
 #### SERVER
 server:
-  host: 'http://localhost'
+  ssl: true
+  host: 'https://localhost'
   port: 8888
   #workers: None # None will default to the workers in the machine
 #### CLIENT

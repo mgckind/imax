@@ -16,6 +16,7 @@ import logging
 import asyncio
 import random as rn
 import requests
+import ssl
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import ProcessPoolExecutor
 
@@ -405,6 +406,11 @@ if __name__ == "__main__":
     images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
         "config.yaml", force_copy=True
     )
+    with open("config.yaml", "r") as cfg:
+        configT = yaml.load(cfg)
+    if configT['server']['ssl']:
+        ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        ssl_context.load_cert_chain('ssl/test.crt', 'ssl/test.key')
     create_db(dbname)
     initiate_db(dbname, images)
     idx, blacklist = initialize(images, nimages, NX, NY, NTILES)
@@ -435,4 +441,8 @@ if __name__ == "__main__":
     cors.add(res.add_route("GET", reset))
     cors.add(red.add_route("GET", redraw))
     app.router.add_routes([web.get("/", main)])
-    web.run_app(app, port=config["server"]["port"], access_log=None)
+    if configT['server']['ssl']:
+        web.run_app(app, port=config["server"]["port"], access_log=None, ssl_context=ssl_context)
+    else:
+        web.run_app(app, port=config["server"]["port"], access_log=None)
+
