@@ -92,7 +92,7 @@ async def info(request):
         logging.info("Galaxy: {}, Class: {}".format(name, classid))
     else:
         name = ""
-    response = web.json_response({'name': name, 'class': classid, 'status': st})
+    response = web.json_response({"name": name, "class": classid, "status": st})
     conn.commit()
     conn.close()
     return response
@@ -101,7 +101,9 @@ async def info(request):
 async def infoall(request):
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
-    c.execute("SELECT a.id,a.name,a.class,b.vx,b.vy FROM IMAGES a, COORDS b where class >= 0 and display = 1 and a.id = b.id order by a.id")
+    c.execute(
+        "SELECT a.id,a.name,a.class,b.vx,b.vy FROM IMAGES a, COORDS b where class >= 0 and display = 1 and a.id = b.id order by a.id"
+    )
     allreturn = c.fetchall()
     logging.info("Getting info for all {} classified tiles".format(len(allreturn)))
     st = 200
@@ -111,24 +113,30 @@ async def infoall(request):
     classids = [i[2] for i in allreturn]
     vx = [i[3] for i in allreturn]
     vy = [i[4] for i in allreturn]
-    response = web.json_response({'names': names, 'classes': classids, 'vx': vx, 'vy': vy, 'status': st})
+    response = web.json_response(
+        {"names": names, "classes": classids, "vx": vx, "vy": vy, "status": st}
+    )
     conn.commit()
     conn.close()
     return response
 
 
 async def filter(request):
-    global idx,NX,NY,NTILES
+    global idx, NX, NY, NTILES
     logging.info("FILTER: ")
     checked = request.query["checked"]
-    checked = checked.split(',')[:-1]
+    checked = checked.split(",")[:-1]
     logging.info(checked)
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
     if len(checked) == 0:
         c.execute("SELECT id FROM IMAGES where display = 1 order by id")
     else:
-        c.execute("SELECT id FROM IMAGES where display = 1 and class in ({}) order by id".format(','.join(checked)))
+        c.execute(
+            "SELECT id FROM IMAGES where display = 1 and class in ({}) order by id".format(
+                ",".join(checked)
+            )
+        )
     all_ids = c.fetchall()
     all_filtered = [i[0] for i in all_ids]
     if len(all_filtered) > 0:
@@ -137,7 +145,7 @@ async def filter(request):
         NY = default_nx
         update_config(NX, NY, len(all_filtered))
         NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
-        logging.info('NX x NY = {} x {}. NTILES = {}'.format(NX, NY, NTILES))
+        logging.info("NX x NY = {} x {}. NTILES = {}".format(NX, NY, NTILES))
     temp = np.zeros(NX * NY, dtype="int") - 1
     image_idx = all_filtered
     temp[: len(image_idx)] = image_idx
@@ -157,7 +165,7 @@ async def filter(request):
 
 
 async def random(request):
-    global idx,NX, NY, NTILES
+    global idx, NX, NY, NTILES
     logging.info("RANDOMIZE: ")
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
@@ -170,7 +178,7 @@ async def random(request):
     NY = default_nx
     update_config(NX, NY, nim)
     NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
-    logging.info('NX x NY = {} x {}. NTILES = {}'.format(NX, NY, NTILES))
+    logging.info("NX x NY = {} x {}. NTILES = {}".format(NX, NY, NTILES))
     temp = np.zeros(NX * NY, dtype="int") - 1
     image_idx = rn.sample(all_displayed, nim)
     temp[: len(image_idx)] = image_idx
@@ -211,11 +219,12 @@ async def redraw(request):
     all_ids = c.fetchall()
     all_displayed = [i[0] for i in all_ids]
     images0, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
-        "config.yaml", n_images=len(all_displayed))
+        "config.yaml", n_images=len(all_displayed)
+    )
     del images0
     update_config(NX, NY, len(all_displayed))
     NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
-    logging.info('NX x NY = {} x {}. NTILES = {}'.format(NX, NY, NTILES))
+    logging.info("NX x NY = {} x {}. NTILES = {}".format(NX, NY, NTILES))
     temp = np.zeros(NX * NY, dtype="int") - 1
     image_idx = all_displayed
     temp[: len(image_idx)] = image_idx
@@ -269,14 +278,16 @@ def update_config(NX, NY, nimages):
         config = yaml.load(cfg)
     port = config["client"]["port"]
     host = config["client"]["host"]
-    req = requests.post('{}:{}/config'.format(host, port), data={'nx': NX, 'ny': NY, 'nim': nimages})
-    yaml_file = dbname.split('.')[0] + '.yaml'
-    with open(yaml_file, 'r') as buf:
+    req = requests.post(
+        "{}:{}/config".format(host, port), data={"nx": NX, "ny": NY, "nim": nimages}
+    )
+    yaml_file = dbname.split(".")[0] + ".yaml"
+    with open(yaml_file, "r") as buf:
         cfg = yaml.load(buf)
-    cfg['xdim'] = NX
-    cfg['ydim'] = NY
-    cfg['nimages'] = nimages
-    with open(yaml_file, 'w') as buf:
+    cfg["xdim"] = NX
+    cfg["ydim"] = NY
+    cfg["nimages"] = nimages
+    with open(yaml_file, "w") as buf:
         buf.write(yaml.dump(cfg))
 
 
@@ -322,9 +333,9 @@ def read_config(conf, force_copy=False, n_images=None, no_read_images=False):
     config["xdim"] = NX
     config["ydim"] = NY
     config["nimages"] = nimages
-    outyaml = config["dataname"]+'.yaml'
+    outyaml = config["dataname"] + ".yaml"
     if force_copy:
-        with open(outyaml, 'w') as out:
+        with open(outyaml, "w") as out:
             out.write(yaml.dump(config))
     NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
     MAXZOOM = np.log2(NTILES)
@@ -334,7 +345,7 @@ def read_config(conf, force_copy=False, n_images=None, no_read_images=False):
             NTILES, MAXZOOM, NTILES * TILESIZE
         )
     )
-    logging.info('NX x NY = {} x {}'.format(NX, NY))
+    logging.info("NX x NY = {} x {}".format(NX, NY))
     return (
         images,
         total_images,
@@ -357,8 +368,7 @@ def create_db(filedb):
         "(id int primary key, display int default 1, name text, class int default -1)"
     )
     c.execute(
-        "create table if not exists COORDS "
-        "(id int primary key, vx int, vy int)"
+        "create table if not exists COORDS " "(id int primary key, vx int, vy int)"
     )
     conn.commit()
     conn.close()
@@ -409,10 +419,12 @@ if __name__ == "__main__":
     )
     with open("config.yaml", "r") as cfg:
         configT = yaml.load(cfg)
-    if configT['server']['ssl']:
-        sslname = configT['server']['sslName']
+    if configT["server"]["ssl"]:
+        sslname = configT["server"]["sslName"]
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        ssl_context.load_cert_chain('ssl/{}.crt'.format(sslname), 'ssl/{}.key'.format(sslname))
+        ssl_context.load_cert_chain(
+            "ssl/{}.crt".format(sslname), "ssl/{}.key".format(sslname)
+        )
     create_db(dbname)
     initiate_db(dbname, images)
     idx, blacklist = initialize(images, nimages, NX, NY, NTILES)
@@ -443,7 +455,9 @@ if __name__ == "__main__":
     cors.add(res.add_route("GET", reset))
     cors.add(red.add_route("GET", redraw))
     app.router.add_routes([web.get("/", main)])
-    if configT['server']['ssl']:
-        web.run_app(app, port=config["server"]["port"], access_log=None, ssl_context=ssl_context)
+    if configT["server"]["ssl"]:
+        web.run_app(
+            app, port=config["server"]["port"], access_log=None, ssl_context=ssl_context
+        )
     else:
         web.run_app(app, port=config["server"]["port"], access_log=None)
