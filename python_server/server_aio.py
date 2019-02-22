@@ -401,6 +401,7 @@ def initialize(images, nimages, NX, NY, NTILES):
 
 
 if __name__ == "__main__":
+
     global idx, images, dbname, NX, NY, NTILES
     logging.basicConfig(level=logging.DEBUG)
     images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
@@ -409,8 +410,9 @@ if __name__ == "__main__":
     with open("config.yaml", "r") as cfg:
         configT = yaml.load(cfg)
     if configT['server']['ssl']:
+        sslname = configT['server']['sslName']
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-        ssl_context.load_cert_chain('ssl/test.crt', 'ssl/test.key')
+        ssl_context.load_cert_chain('ssl/{}.crt'.format(sslname), 'ssl/{}.key'.format(sslname))
     create_db(dbname)
     initiate_db(dbname, images)
     idx, blacklist = initialize(images, nimages, NX, NY, NTILES)
@@ -445,4 +447,3 @@ if __name__ == "__main__":
         web.run_app(app, port=config["server"]["port"], access_log=None, ssl_context=ssl_context)
     else:
         web.run_app(app, port=config["server"]["port"], access_log=None)
-

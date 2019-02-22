@@ -11,7 +11,8 @@ minYrange: 0
 #### SERVER
 server:
   ssl: true
-  host: 'https://localhost'
+  sslName: test #prefix of .crt and .key files inside ssl/ folder e.g., ssl/{sslName.key}
+  host: 'https://localhost' 
   port: 8888
   #workers: None # None will default to the workers in the machine
 #### CLIENT
