@@ -4,6 +4,7 @@ deploy/
 go_test/
 py_test/
 .idea
+config.yaml
 python_server/__pycache__
 python_server/*.db
 # dependencies

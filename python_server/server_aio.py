@@ -10,11 +10,9 @@ import glob
 import sqlite3
 import random as rn
 import yaml
-import timeit
 import coloredlogs
 import logging
 import asyncio
-import random as rn
 import requests
 import ssl
 from concurrent.futures import ThreadPoolExecutor
@@ -411,7 +409,10 @@ def initialize(images, nimages, NX, NY, NTILES):
 
 
 if __name__ == "__main__":
-
+    if not os.path.exists("config.yaml"):
+        logging.error("config.yaml not found. Use config_template.yaml as example")
+        logging.error("Exiting")
+        sys.exit()
     global idx, images, dbname, NX, NY, NTILES
     logging.basicConfig(level=logging.DEBUG)
     images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
