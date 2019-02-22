@@ -1,7 +1,5 @@
 dataname: 'test'
 path: '/home/matias/DATA/Dog-Cat-Classifier/Data/Train_Data/all'
-#path: '/home/matias/DES/box10/images'
-#path: '/home/matias/Downloads/sample/sampled_galaxies/sampled'
 nimages: 1500
 xdim: 100
 ydim: 30
@@ -12,7 +10,7 @@ minYrange: 0
 server:
   ssl: true
   sslName: test #prefix of .crt and .key files inside ssl/ folder e.g., ssl/{sslName.key}
-  host: 'https://localhost' 
+  host: 'https://localhost'
   port: 8888
   #workers: None # None will default to the workers in the machine
 #### CLIENT
