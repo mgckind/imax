@@ -17,7 +17,7 @@ class MainHandler(tornado.web.RequestHandler):
             inyaml = "local_config.yaml"
         else:
             inyaml = "config.yaml"
-        print("Reading {}".format(inyaml))
+        logging.info("Reading {}".format(inyaml))
         images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
             inyaml, no_read_images=True
         )
@@ -50,7 +50,7 @@ class ConfigHandler(tornado.web.RequestHandler):
         ny = int(self.get_argument("ny"))
         nim = int(self.get_argument("nim"))
         yaml_file = "local_config.yaml"
-        print(" From config, NX = {}, NY={}. {} nimages".format(nx, ny, nim))
+        logging.info(" From config, NX = {}, NY={}. {} nimages".format(nx, ny, nim))
         with open("config.yaml", "r") as cfg:
             config = yaml.load(cfg)
         config["xdim"] = nx
@@ -78,6 +78,7 @@ if __name__ == "__main__":
     with open("config.yaml", "r") as cfg:
         config = yaml.load(cfg)
     port = config["client"]["port"]
-    print("======== Running on http://0.0.0.0:{} ========".format(port))
+    logging.info("======== Running on http://0.0.0.0:{} ========".format(port))
+    logging.info("(Press CTRL+C to quit)")
     app.listen(port)
     tornado.ioloop.IOLoop.current().start()

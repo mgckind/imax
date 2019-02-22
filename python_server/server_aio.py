@@ -456,9 +456,13 @@ if __name__ == "__main__":
     cors.add(res.add_route("GET", reset))
     cors.add(red.add_route("GET", redraw))
     app.router.add_routes([web.get("/", main)])
+    host = config["server"]["port"]
+    port = config["server"]["port"]
+    logging.info("======== Running on {}:{} ========".format(host, port))
+    logging.info("(Press CTRL+C to quit)")
     if configT["server"]["ssl"]:
         web.run_app(
-            app, port=config["server"]["port"], access_log=None, ssl_context=ssl_context
+            app, port=config["server"]["port"], print=None, access_log=None, ssl_context=ssl_context
         )
     else:
-        web.run_app(app, port=config["server"]["port"], access_log=None)
+        web.run_app(app, port=config["server"]["port"], access_log=None, print=None)
