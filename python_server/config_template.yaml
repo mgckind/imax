@@ -1,23 +1,23 @@
-dataname: 'test'
-path: '/home/matias/DATA/Dog-Cat-Classifier/Data/Train_Data/all'
-nimages: 1500
-xdim: 100
-ydim: 30
-tileSize: 256
+dataname: '{FILL ME}' #Name for the sqlite DB and config file
+path: '{FILL ME}' #Path to png images
+nimages: 1500 #Number of objects to be displayed even if there are more in the folder
+xdim: 100 #X dimension for the display
+ydim: 30 #Y dimension for the display
+tileSize: 256 #Size of the tile for which images are resized at max zoom level
 minXrange: 0
 minYrange: 0
 #### SERVER
 server:
-  ssl: true
+  ssl: false #use ssl, need to have certificates
   sslName: test #prefix of .crt and .key files inside ssl/ folder e.g., ssl/{sslName.key}
-  host: 'https://localhost'
+  host: 'http://localhost' #if using ssl, change to https
   port: 8888
   #workers: None # None will default to the workers in the machine
 #### CLIENT
 client:
   host: 'http://localhost'
   port: 8000
-#### classes
+#### classes, use any classes from 0 to 9
 classes:
     - Elliptical: 9
     - Spiral: 8
