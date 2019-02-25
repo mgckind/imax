@@ -48,7 +48,7 @@ If you are running locally you can go to [http://localhost:8000/](http://localho
 
 4. Start the client container, connect to network and expose the port 8000 to local host
 
-	   docker run -it --name client -p 8000:8000  --network cutouts cexp python client.pt
+           docker run -d --name client -p 8000:8000 -v {PATH TO CONFIG FILE}:/home/explorer/server/config.yaml  --network cutouts cexp python client.py
 
 Now the containers can talk at the localhost. 
 If you are running locally you can go to [http://localhost:8000/](http://localhost:8000/)
