@@ -5,13 +5,28 @@ import os
 import numpy as np
 import coloredlogs
 import sys
+import random as rn
+import string
 import logging
 from server_aio import read_config
 
 coloredlogs.install(level=logging.INFO)
+VOWELS = "aeiou"
+CONSONANTS = "".join(set(string.ascii_lowercase) - set(VOWELS))
 
 
-class MainHandler(tornado.web.RequestHandler):
+class BaseHandler(tornado.web.RequestHandler):
+    def get_current_user(self):
+        cc = rn.choices(CONSONANTS, k=8)
+        cc[::-2] = rn.choices(VOWELS, k=4)
+        username = "".join(cc)
+        if not self.get_secure_cookie("username"):
+            self.set_secure_cookie("username", username)
+            return username
+        return self.get_secure_cookie("username")
+
+
+class MainHandler(BaseHandler):
     def get(self):
         if os.path.exists("local_config.yaml"):
             inyaml = "local_config.yaml"
@@ -41,7 +56,7 @@ class MainHandler(tornado.web.RequestHandler):
         initial_h = ny * tilesize / int(ntiles / (2 ** config["minZoom"]))
         config["widthDiv"] = min(max(512, initial_w), 3000)
         config["heightDiv"] = min(max(512, initial_h), 800)
-        config["username"] = "user1"
+        config["username"] = self.current_user
         self.render("index.html", **config)
 
 
@@ -64,7 +79,7 @@ class ConfigHandler(tornado.web.RequestHandler):
 
 
 def make_app():
-    settings = {"template_path": "templates/", "static_path": "static/", "debug": True}
+    settings = {"template_path": "templates/", "static_path": "static/", "debug": True, "cookie_secret": "ABCDEF"}
     return tornado.web.Application(
         [(r"/", MainHandler), (r"/config", ConfigHandler)], **settings
     )

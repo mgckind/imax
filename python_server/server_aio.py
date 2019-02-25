@@ -55,7 +55,8 @@ def get_tile(x, y, z, inv, idx):
 
 
 async def update(request):
-    conn = sqlite3.connect(dbname)
+    userdb = request.query["user"] + '.db'
+    conn = sqlite3.connect(userdb)
     c = conn.cursor()
     gid = request.query["gid"]
     class_input = int(request.query["class"])
@@ -72,7 +73,8 @@ async def update(request):
 
 async def info(request):
     global idx
-    conn = sqlite3.connect(dbname)
+    userdb = request.query["user"] + '.db'
+    conn = sqlite3.connect(userdb)
     c = conn.cursor()
     x = int(request.query["x"])
     y = int(request.query["y"])
@@ -97,7 +99,8 @@ async def info(request):
 
 
 async def infoall(request):
-    conn = sqlite3.connect(dbname)
+    userdb = request.query["user"] + '.db'
+    conn = sqlite3.connect(userdb)
     c = conn.cursor()
     c.execute(
         "SELECT a.id,a.name,a.class,b.vx,b.vy FROM IMAGES a, COORDS b where class >= 0 and display = 1 and a.id = b.id order by a.id"
@@ -121,11 +124,12 @@ async def infoall(request):
 
 async def filter(request):
     global idx, NX, NY, NTILES
+    userdb = request.query["user"] + '.db'
     logging.info("FILTER: ")
     checked = request.query["checked"]
     checked = checked.split(",")[:-1]
     logging.info(checked)
-    conn = sqlite3.connect(dbname)
+    conn = sqlite3.connect(userdb)
     c = conn.cursor()
     if len(checked) == 0:
         c.execute("SELECT id FROM IMAGES where display = 1 order by id")
@@ -164,8 +168,9 @@ async def filter(request):
 
 async def random(request):
     global idx, NX, NY, NTILES
+    userdb = request.query["user"] + '.db'
     logging.info("RANDOMIZE: ")
-    conn = sqlite3.connect(dbname)
+    conn = sqlite3.connect(userdb)
     c = conn.cursor()
     c.execute("SELECT id FROM IMAGES where display = 1 order by id")
     all_ids = c.fetchall()
@@ -196,12 +201,13 @@ async def random(request):
 
 
 async def reset(request):
-    global idx, blacklist, images, dbname
+    global idx, blacklist, images
+    userdb = request.query["user"] + '.db'
     logging.info("RESET: ")
     images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
         "config.yaml", force_copy=True
     )
-    idx, blacklist = initialize(images, nimages, NX, NY, NTILES)
+    idx, blacklist = initialize(images, nimages, NX, NY, NTILES, userdb)
     update_config(NX, NY, nimages)
     # initiate_db(dbname, images)
     response = web.Response(text="", status=200)
@@ -209,9 +215,10 @@ async def reset(request):
 
 
 async def redraw(request):
-    global idx, NX, NY, NTILES, dbname
+    global idx, NX, NY, NTILES
+    userdb = request.query["user"] + '.db'
     logging.info("REDRAW: ")
-    conn = sqlite3.connect(dbname)
+    conn = sqlite3.connect(userdb)
     c = conn.cursor()
     c.execute("SELECT id FROM IMAGES where display = 1 and class != 0 order by id")
     all_ids = c.fetchall()
@@ -268,6 +275,22 @@ async def main(request):
         response = web.Response(body=tile, status=200, content_type="image/png")
     else:
         response = web.Response(text="", status="404")
+    return response
+
+
+async def init_db(request):
+    global idx, blacklist
+    username = request.query["user"]
+    userdb = username + '.db'
+    if not os.path.exists(userdb):
+        logging.info("Creating DB for {}".format(username))
+        create_db(userdb)
+        initiate_db(userdb, images)
+        idx = None
+    if idx is None:
+        logging.info("Creating idx for the first time")
+        idx, blacklist = initialize(images, nimages, NX, NY, NTILES, userdb)
+    response = web.Response(text="", status="200")
     return response
 
 
@@ -381,7 +404,7 @@ def initiate_db(filedb, images):
     conn.close()
 
 
-def initialize(images, nimages, NX, NY, NTILES):
+def initialize(images, nimages, NX, NY, NTILES, dbname):
     temp = np.zeros(NX * NY, dtype="int") - 1
     image_idx = rn.sample(range(len(images)), nimages)  # np.arange(nimages)
     conn = sqlite3.connect(dbname)
@@ -409,11 +432,11 @@ def initialize(images, nimages, NX, NY, NTILES):
 
 
 if __name__ == "__main__":
+    global idx, images, NX, NY, NTILES
     if not os.path.exists("config.yaml"):
         logging.error("config.yaml not found. Use config_template.yaml as example")
         logging.error("Exiting")
         sys.exit()
-    global idx, images, dbname, NX, NY, NTILES
     logging.basicConfig(level=logging.DEBUG)
     images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
         "config.yaml", force_copy=True
@@ -426,9 +449,11 @@ if __name__ == "__main__":
         ssl_context.load_cert_chain(
             "ssl/{}.crt".format(sslname), "ssl/{}.key".format(sslname)
         )
-    create_db(dbname)
-    initiate_db(dbname, images)
-    idx, blacklist = initialize(images, nimages, NX, NY, NTILES)
+    idx = None
+    blacklist = []
+    # create_db(dbname)
+    # initiate_db(dbname, images)
+    # idx, blacklist = initialize(images, nimages, NX, NY, NTILES, dbname)
     # Web app
     app = web.Application()
     cors = aiohttp_cors.setup(app)
@@ -447,6 +472,7 @@ if __name__ == "__main__":
     fil = cors.add(app.router.add_resource("/filter"))
     res = cors.add(app.router.add_resource("/reset"))
     red = cors.add(app.router.add_resource("/redraw"))
+    ini = cors.add(app.router.add_resource("/initdb"))
     cors.add(rnn.add_route("GET", random))
     cors.add(inf.add_route("GET", info))
     cors.add(get.add_route("GET", infoall))
@@ -455,6 +481,7 @@ if __name__ == "__main__":
     cors.add(fil.add_route("GET", filter))
     cors.add(res.add_route("GET", reset))
     cors.add(red.add_route("GET", redraw))
+    cors.add(ini.add_route("GET", init_db))
     app.router.add_routes([web.get("/", main)])
     host = config["server"]["port"]
     port = config["server"]["port"]
