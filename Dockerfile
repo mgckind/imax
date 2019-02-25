@@ -8,7 +8,7 @@ ENV LIBRARY_PATH=/lib:/usr/lib
 FROM base as builder
 RUN mkdir /install
 WORKDIR /install
-COPY requirements.txt /requirements.txt
+ADD requirements.txt /requirements.txt
 RUN pip install --install-option="--prefix=/install" -r /requirements.txt
 
 FROM base

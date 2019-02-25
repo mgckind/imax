@@ -31,19 +31,28 @@ If you are running locally you can go to [http://localhost:8000/](http://localho
 
 #### Docker
 
-1. Create an internal network
+0. Create image from Dockerfile
+
+        cd cutouts-explorer
+        docker build -t cexp .
+
+1. Create an internal network so server/client can talk through the internal network (is not need for now as we are exposing both services at the localhost)
 
         docker network create --driver bridge cutouts
 
-2. Start the server container and attach the volume with images, connect to network and expose port
+2. Create local config file to be mounted inside the containers. Create `config.yaml` based on the template, and replace the image location.
 
-	   docker run -it --name server -p 8888:8888 -v {PATH_TO_IMAGE}:{PATH_TO_IMAGES} --network cutouts cex sh
+3. Start the server container and attach the volume with images, connect to network and expose port 8888 to localhost
 
-3. Start the client container, connect to network and expose the port
+           docker run -d --name server -p 8888:8888 -v {PATH TO CONFIG FILE}:/home/explorer/server/config.yaml -v {PATH TO LOCAL IMAGES}:{PATH TO CONTAINER IMAGES} --network cutouts cexp python server_aio.py
 
-	   docker run -it --name client -p 8000:8000  --network cutouts cex sh
+4. Start the client container, connect to network and expose the port 8000 to local host
 
-Now the containers can talk internally and names are dns resolved.
+	   docker run -it --name client -p 8000:8000  --network cutouts cexp python client.pt
+
+Now the containers can talk at the localhost. 
+If you are running locally you can go to [http://localhost:8000/](http://localhost:8000/)
+
 
 ### Usage
 
