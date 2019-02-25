@@ -41,6 +41,7 @@ class MainHandler(tornado.web.RequestHandler):
         initial_h = ny * tilesize / int(ntiles / (2 ** config["minZoom"]))
         config["widthDiv"] = min(max(512, initial_w), 3000)
         config["heightDiv"] = min(max(512, initial_h), 800)
+        config["username"] = "user1"
         self.render("index.html", **config)
 
 

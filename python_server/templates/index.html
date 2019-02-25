@@ -60,8 +60,8 @@
 
         // method that we will use to update the control based on feature properties passed
         info.update = function (props) {
-            this._div.innerHTML = '<h4>Image information</h4> <br />' +
-            ( props ? 'Name: ' + props.name + '<br /> Class: ' + props.class +
+            this._div.innerHTML = '<h4> {{ username }} </h4> ' +
+            ( props ? '<p>Image information</p>Name: ' + props.name + '<br /> Class: ' + props.class +
             '<br /><button onclick="clear_selected()"> Clear(c)</button>' : '');
         };
 
