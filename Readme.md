@@ -4,6 +4,8 @@ This is an interactive tool for visualize and classify multiple images at a time
 
 You can move and label images all from the keyboard.
 
+You can see a (not very good) gif demo ot the tool in action, a live demo or a better video is [here](https://vimeo.com/319571639)
+
 ![Demo](demo/demo.gif)
 
 ### Deployment
