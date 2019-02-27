@@ -20,7 +20,7 @@ from concurrent.futures import ProcessPoolExecutor
 
 coloredlogs.install(level=logging.INFO)
 MAX_WORKERS = None
-
+DBFILES = 'dbfiles'
 
 def get_tile(x, y, z, inv, idx):
     byteIO = io.BytesIO()
@@ -55,7 +55,7 @@ def get_tile(x, y, z, inv, idx):
 
 
 async def update(request):
-    userdb = request.query["user"] + '.db'
+    userdb = os.path.join(DBFILES, request.query["user"] + '.db')
     conn = sqlite3.connect(userdb)
     c = conn.cursor()
     gid = request.query["gid"]
@@ -73,7 +73,7 @@ async def update(request):
 
 async def info(request):
     global idx
-    userdb = request.query["user"] + '.db'
+    userdb = os.path.join(DBFILES, request.query["user"] + '.db')
     conn = sqlite3.connect(userdb)
     c = conn.cursor()
     x = int(request.query["x"])
@@ -99,7 +99,7 @@ async def info(request):
 
 
 async def infoall(request):
-    userdb = request.query["user"] + '.db'
+    userdb = os.path.join(DBFILES, request.query["user"] + '.db')
     conn = sqlite3.connect(userdb)
     c = conn.cursor()
     c.execute(
@@ -124,7 +124,7 @@ async def infoall(request):
 
 async def filter(request):
     global idx, NX, NY, NTILES
-    userdb = request.query["user"] + '.db'
+    userdb = os.path.join(DBFILES, request.query["user"] + '.db')
     logging.info("FILTER: ")
     checked = request.query["checked"]
     checked = checked.split(",")[:-1]
@@ -168,7 +168,7 @@ async def filter(request):
 
 async def random(request):
     global idx, NX, NY, NTILES
-    userdb = request.query["user"] + '.db'
+    userdb = os.path.join(DBFILES, request.query["user"] + '.db')
     logging.info("RANDOMIZE: ")
     conn = sqlite3.connect(userdb)
     c = conn.cursor()
@@ -216,7 +216,7 @@ async def reset(request):
 
 async def redraw(request):
     global idx, NX, NY, NTILES
-    userdb = request.query["user"] + '.db'
+    userdb = os.path.join(DBFILES, request.query["user"] + '.db')
     logging.info("REDRAW: ")
     conn = sqlite3.connect(userdb)
     c = conn.cursor()
@@ -281,7 +281,7 @@ async def main(request):
 async def init_db(request):
     global idx, blacklist
     username = request.query["user"]
-    userdb = username + '.db'
+    userdb = os.path.join(DBFILES, username + '.db')
     if not os.path.exists(userdb):
         logging.info("Creating DB for {}".format(username))
         create_db(userdb)
@@ -433,6 +433,8 @@ def initialize(images, nimages, NX, NY, NTILES, dbname):
 
 if __name__ == "__main__":
     global idx, images, NX, NY, NTILES
+    if not os.path.exists(DBFILES):
+        os.makedirs(DBFILES)
     if not os.path.exists("config.yaml"):
         logging.error("config.yaml not found. Use config_template.yaml as example")
         logging.error("Exiting")

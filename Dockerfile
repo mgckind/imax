@@ -14,7 +14,8 @@ RUN pip install --install-option="--prefix=/install" -r /requirements.txt
 FROM base
 RUN adduser explorer -u 1001 -g 1001 -h /home/explorer -s /bin/sh -D
 COPY --from=builder /install /usr/local
-COPY python_server /home/explorer/server
+ADD python_server /home/explorer/server
 RUN chown -R 1001:1001 /home/explorer
 WORKDIR /home/explorer/server
+RUN rm -rf ssl/ dbfiles/ config.yaml __pycache__ 
 USER explorer
