@@ -12,6 +12,7 @@ server:
   sslName: test #prefix of .crt and .key files inside ssl/ folder e.g., ssl/{sslName.key}
   host: 'http://localhost' #if using ssl, change to https
   port: 8888
+  rootUrl: '/cexp' #root url for server, e.g. request are made to /cexp/, if None use "/"
   #workers: None # None will default to the workers in the machine
 #### CLIENT
 client:

@@ -39,6 +39,7 @@ class MainHandler(BaseHandler):
         del images
         config["serverPort"] = config["server"]["port"]
         config["serverHost"] = config["server"]["host"]
+        config["rootUrl"] = config["server"]["rootUrl"]
         config["xdim"] = NX
         config["ydim"] = NY
         config["nimages"] = nimages

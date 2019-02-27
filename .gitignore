@@ -1,5 +1,6 @@
 python_server/config.yaml
 python_server/ssl/*
+python_server/dbfiles/*
 deploy/
 go_test/
 py_test/

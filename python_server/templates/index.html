@@ -68,7 +68,7 @@
         info.addTo(map);
 
 
-      var layer = L.tileLayer('{{ serverHost }}:{{ serverPort }}/?x={x}&y={y}&z={z}&inv={inv}',
+      var layer = L.tileLayer('{{ serverHost }}:{{ serverPort }}{{ rootUrl }}?x={x}&y={y}&z={z}&inv={inv}',
         {
           inv: 0,
           maxZoom: {{ maxZoom }},
@@ -114,7 +114,7 @@
         window.coords = getCoords(vx,vy,tileSize);
         window.polygon = L.polygon(coords, {color: 'green', fillOpacity: 0.05});
         if (zz >= {{ minZoom }} ){
-            $.get("{{ serverHost }}:{{ serverPort }}/info", {user: window.username, x:vx, y:vy}, function(data, status){
+            $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}info", {user: window.username, x:vx, y:vy}, function(data, status){
             if (data.status == 404) {
                console.log('outside boundaries');
                window.vx = lastvx;
@@ -328,7 +328,7 @@
             map.removeLayer(window.polygon);
             map.removeLayer(window.classifiedTiles[window.selected].polygon);
             map.addLayer(window.classifiedTiles[window.selected].polygon);
-            $.get("{{ serverHost }}:{{ serverPort }}/update", {user: window.username, gid:window.selected, class: window.classifiedTiles[window.selected].class });
+            $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}update", {user: window.username, gid:window.selected, class: window.classifiedTiles[window.selected].class });
             var props = { 'name': window.selected, 'class':  window.classesName[val] }
             info.update(props);
             };
@@ -341,7 +341,7 @@
               delete window.classifiedTiles[window.selected];
               map.removeLayer(window.polygon);
               map.addLayer(window.polygon);
-              $.get("{{ serverHost }}:{{ serverPort }}/update", {user: window.username, gid:window.selected, class:-1});
+              $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}update", {user: window.username, gid:window.selected, class:-1});
               var props = { 'name': window.selected, 'class':  -1 };
               info.update(props);
           };
@@ -351,7 +351,7 @@
 
       function toggle_classes(){
           if (!window.loaded_data){
-         $.get("{{ serverHost }}:{{ serverPort }}/getall", {user: window.username}, function(data){
+         $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}getall", {user: window.username}, function(data){
              console.log('Getting data from server');
             for (i=0; i < data.names.length; i++) {
                 var val = parseInt(data.classes[i])
@@ -381,7 +381,7 @@
 
         function random() {
          window.loaded_data = false;
-         $.get("{{ serverHost }}:{{ serverPort }}/random" , {user: window.username});
+         $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}random" , {user: window.username});
           location.reload(true);
           map.removeLayer(layer);
           map.addLayer(layer);
@@ -389,15 +389,15 @@
           }
         function initdb() {
         var username = '{{ username }}';
-         $.get("{{ serverHost }}:{{ serverPort }}/initdb", {user:username});
+         $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}initdb", {user:username});
           }
 
         function sort() {
-         $.get("{{ serverHost }}:{{ serverPort }}/sort");
+         $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}sort");
           layer.redraw();
           }
         function redraw() {
-         $.get("{{ serverHost }}:{{ serverPort }}/redraw", {user: window.username}, function(){
+         $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}redraw", {user: window.username}, function(){
           location.reload(true);
              });
           map.removeLayer(layer);
@@ -405,7 +405,7 @@
           layer.redraw();
           }
         function reset() {
-         $.get("{{ serverHost }}:{{ serverPort }}/reset", {user: window.username}, function(){
+         $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}reset", {user: window.username}, function(){
              location.reload(true);
              });
           map.removeLayer(layer);
@@ -424,7 +424,7 @@
           var temp = document.getElementById("checkbox_noclass");
           if (temp.checked){ check += -1+',';}
 
-          $.get("{{ serverHost }}:{{ serverPort }}/filter", {user: window.username, checked:check}, function(){
+          $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}/filter", {user: window.username, checked:check}, function(){
               map.removeLayer(layer);
               map.addLayer(layer);
               layer.redraw();

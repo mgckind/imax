@@ -466,15 +466,18 @@ if __name__ == "__main__":
             "*": aiohttp_cors.ResourceOptions()
         },
     )
-    rnn = cors.add(app.router.add_resource("/random"))
-    inf = cors.add(app.router.add_resource("/info"))
-    upd = cors.add(app.router.add_resource("/update"))
-    get = cors.add(app.router.add_resource("/getall"))
-    sor = cors.add(app.router.add_resource("/sort"))
-    fil = cors.add(app.router.add_resource("/filter"))
-    res = cors.add(app.router.add_resource("/reset"))
-    red = cors.add(app.router.add_resource("/redraw"))
-    ini = cors.add(app.router.add_resource("/initdb"))
+    host = config["server"]["host"]
+    port = config["server"]["port"]
+    root = config["server"]["rootUrl"]
+    rnn = cors.add(app.router.add_resource("{rootUrl}random".format(rootUrl=root)))
+    inf = cors.add(app.router.add_resource("{rootUrl}info".format(rootUrl=root)))
+    upd = cors.add(app.router.add_resource("{rootUrl}update".format(rootUrl=root)))
+    get = cors.add(app.router.add_resource("{rootUrl}getall".format(rootUrl=root)))
+    sor = cors.add(app.router.add_resource("{rootUrl}sort".format(rootUrl=root)))
+    fil = cors.add(app.router.add_resource("{rootUrl}filter".format(rootUrl=root)))
+    res = cors.add(app.router.add_resource("{rootUrl}reset".format(rootUrl=root)))
+    red = cors.add(app.router.add_resource("{rootUrl}redraw".format(rootUrl=root)))
+    ini = cors.add(app.router.add_resource("{rootUrl}initdb".format(rootUrl=root)))
     cors.add(rnn.add_route("GET", random))
     cors.add(inf.add_route("GET", info))
     cors.add(get.add_route("GET", infoall))
@@ -484,10 +487,8 @@ if __name__ == "__main__":
     cors.add(res.add_route("GET", reset))
     cors.add(red.add_route("GET", redraw))
     cors.add(ini.add_route("GET", init_db))
-    app.router.add_routes([web.get("/", main)])
-    host = config["server"]["port"]
-    port = config["server"]["port"]
-    logging.info("======== Running on {}:{} ========".format(host, port))
+    app.router.add_routes([web.get("{rootUrl}".format(rootUrl=root), main)])
+    logging.info("======== Running on {}:{}{} ========".format(host, port, root))
     logging.info("(Press CTRL+C to quit)")
     if configT["server"]["ssl"]:
         web.run_app(
