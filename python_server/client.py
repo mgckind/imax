@@ -8,11 +8,13 @@ import sys
 import random as rn
 import string
 import logging
+import sqlite3
 from server_aio import read_config
 
 coloredlogs.install(level=logging.INFO)
 VOWELS = "aeiou"
 CONSONANTS = "".join(set(string.ascii_lowercase) - set(VOWELS))
+DBFILES = 'dbfiles'
 
 
 class BaseHandler(tornado.web.RequestHandler):
@@ -23,20 +25,25 @@ class BaseHandler(tornado.web.RequestHandler):
         if not self.get_secure_cookie("username"):
             self.set_secure_cookie("username", username)
             return username
-        return self.get_secure_cookie("username")
+        return self.get_secure_cookie("username").decode('ascii').replace('\"', '')
 
 
 class MainHandler(BaseHandler):
     def get(self):
-        if os.path.exists("local_config.yaml"):
-            inyaml = "local_config.yaml"
-        else:
-            inyaml = "config.yaml"
+        username = self.current_user
+        userdb = os.path.join(DBFILES, username + '.db')
+        inyaml = "config.yaml"
         logging.info("Reading {}".format(inyaml))
         images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
             inyaml, no_read_images=True
         )
         del images
+        if os.path.exists(userdb):
+            conn = sqlite3.connect(userdb)
+            c = conn.cursor()
+            c.execute('SELECT nimages, nx, ny from CONFIG')
+            nimages, NX, NY = c.fetchone()
+            conn.close()
         config["serverPort"] = config["server"]["port"]
         config["serverHost"] = config["server"]["host"]
         config["rootUrl"] = config["server"]["rootUrl"]
@@ -57,32 +64,14 @@ class MainHandler(BaseHandler):
         initial_h = ny * tilesize / int(ntiles / (2 ** config["minZoom"]))
         config["widthDiv"] = min(max(512, initial_w), 3000)
         config["heightDiv"] = min(max(512, initial_h), 800)
-        config["username"] = self.current_user
+        config["username"] = username
         self.render("index.html", **config)
-
-
-class ConfigHandler(tornado.web.RequestHandler):
-    def post(self):
-        nx = int(self.get_argument("nx"))
-        ny = int(self.get_argument("ny"))
-        nim = int(self.get_argument("nim"))
-        yaml_file = "local_config.yaml"
-        logging.info(" From config, NX = {}, NY={}. {} nimages".format(nx, ny, nim))
-        with open("config.yaml", "r") as cfg:
-            config = yaml.load(cfg)
-        config["xdim"] = nx
-        config["ydim"] = ny
-        config["nimages"] = nim
-        with open(yaml_file, "w") as buf:
-            buf.write(yaml.dump(config))
-        self.set_status(200)
-        self.finish()
 
 
 def make_app():
     settings = {"template_path": "templates/", "static_path": "static/", "debug": True, "cookie_secret": "ABCDEF"}
     return tornado.web.Application(
-        [(r"/", MainHandler), (r"/config", ConfigHandler)], **settings
+        [(r"/", MainHandler)], **settings
     )
 
 

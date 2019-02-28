@@ -22,6 +22,7 @@ coloredlogs.install(level=logging.INFO)
 MAX_WORKERS = None
 DBFILES = 'dbfiles'
 
+
 def get_tile(x, y, z, inv, idx):
     byteIO = io.BytesIO()
     try:
@@ -145,7 +146,7 @@ async def filter(request):
         default_nx = int(np.ceil(np.sqrt(len(all_filtered))))
         NX = default_nx
         NY = default_nx
-        update_config(NX, NY, len(all_filtered))
+        update_config(NX, NY, len(all_filtered), userdb)
         NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
         logging.info("NX x NY = {} x {}. NTILES = {}".format(NX, NY, NTILES))
     temp = np.zeros(NX * NY, dtype="int") - 1
@@ -179,7 +180,7 @@ async def random(request):
     default_nx = int(np.ceil(np.sqrt(nim)))
     NX = default_nx
     NY = default_nx
-    update_config(NX, NY, nim)
+    update_config(NX, NY, nim, userdb)
     NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
     logging.info("NX x NY = {} x {}. NTILES = {}".format(NX, NY, NTILES))
     temp = np.zeros(NX * NY, dtype="int") - 1
@@ -202,13 +203,13 @@ async def random(request):
 
 async def reset(request):
     global idx, blacklist, images
-    userdb = request.query["user"] + '.db'
+    userdb = os.path.join(DBFILES, request.query["user"] + '.db')
     logging.info("RESET: ")
     images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
         "config.yaml", force_copy=True
     )
     idx, blacklist = initialize(images, nimages, NX, NY, NTILES, userdb)
-    update_config(NX, NY, nimages)
+    update_config(NX, NY, nimages, userdb)
     # initiate_db(dbname, images)
     response = web.Response(text="", status=200)
     return response
@@ -227,7 +228,7 @@ async def redraw(request):
         "config.yaml", n_images=len(all_displayed)
     )
     del images0
-    update_config(NX, NY, len(all_displayed))
+    update_config(NX, NY, len(all_displayed), userdb)
     NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
     logging.info("NX x NY = {} x {}. NTILES = {}".format(NX, NY, NTILES))
     temp = np.zeros(NX * NY, dtype="int") - 1
@@ -294,22 +295,13 @@ async def init_db(request):
     return response
 
 
-def update_config(NX, NY, nimages):
-    with open("config.yaml", "r") as cfg:
-        config = yaml.load(cfg)
-    port = config["client"]["port"]
-    host = config["client"]["host"]
-    req = requests.post(
-        "{}:{}/config".format(host, port), data={"nx": NX, "ny": NY, "nim": nimages}
-    )
-    yaml_file = dbname.split(".")[0] + ".yaml"
-    with open(yaml_file, "r") as buf:
-        cfg = yaml.load(buf)
-    cfg["xdim"] = NX
-    cfg["ydim"] = NY
-    cfg["nimages"] = nimages
-    with open(yaml_file, "w") as buf:
-        buf.write(yaml.dump(cfg))
+def update_config(NX, NY, nimages, userdb):
+    conn = sqlite3.connect(userdb)
+    c = conn.cursor()
+    chunk = [0, nimages, NX, NY]
+    c.execute("INSERT or REPLACE INTO CONFIG VALUES (?,?,?,?)", chunk)
+    conn.commit()
+    conn.close()
 
 
 def read_config(conf, force_copy=False, n_images=None, no_read_images=False):
@@ -391,6 +383,9 @@ def create_db(filedb):
     c.execute(
         "create table if not exists COORDS " "(id int primary key, vx int, vy int)"
     )
+    c.execute(
+        "create table if not exists CONFIG " "(id int primary key, nimages int , nx int, ny int)"
+    )
     conn.commit()
     conn.close()
 
@@ -428,6 +423,7 @@ def initialize(images, nimages, NX, NY, NTILES, dbname):
         c.execute("INSERT INTO COORDS VALUES ({},{},{})".format(i, vx[0], vy[0]))
     conn.commit()
     conn.close()
+    update_config(NX, NY, nimages, dbname)
     return idx, blacklist
 
 
