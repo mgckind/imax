@@ -424,7 +424,7 @@
           var temp = document.getElementById("checkbox_noclass");
           if (temp.checked){ check += -1+',';}
 
-          $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}/filter", {user: window.username, checked:check}, function(){
+          $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}filter", {user: window.username, checked:check}, function(){
               map.removeLayer(layer);
               map.addLayer(layer);
               layer.redraw();
