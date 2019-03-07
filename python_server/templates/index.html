@@ -158,7 +158,7 @@
           });
 
 
-          map.on('contextmenu', function(event){
+          map.on('click', function(event){
              var pp = event.latlng;
              var dd = map.project(L.latLng(pp.lat,pp.lng),map.getMaxZoom);
              window.zz = map.getZoom();

@@ -22,6 +22,7 @@ class BaseHandler(tornado.web.RequestHandler):
         cc = rn.choices(CONSONANTS, k=8)
         cc[::-2] = rn.choices(VOWELS, k=4)
         username = "".join(cc)
+        return 'ncsa_eoh_2019'
         if not self.get_secure_cookie("username"):
             self.set_secure_cookie("username", username)
             return username
