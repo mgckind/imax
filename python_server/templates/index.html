@@ -41,14 +41,19 @@
       	};
 
 
+      var mcy = -1 * {{ heightDiv }}/Math.pow(2, {{ minZoom }} + 1);
+      var mcx = 1 * {{ widthDiv }}/Math.pow(2, {{ minZoom }} + 1);
+
+
       var map = L.map('map', {
         dragging: true,
         zoomDelta: 1,
         fullscreenControl: false,
         attributionControl: false,
         zoomControl:false,
+        crs: L.CRS.Simple,
         keyboardPanDelta: 80,
-        }).setView([0,0], 0);
+        }).setView([mcy,mcx], {{ minZoom }});
 
         var info = L.control();
 
@@ -84,6 +89,7 @@
         //map.keyboard.disable();
         window.onload = initdb();
         window.tileSize = {{ tileSize }};
+        window.factor = {{ tileSize }}/Math.pow(2, {{ maxZoom }})
         window.loaded_data = false;
         window.toggle_on = false;
         window.help_on = false;
@@ -148,12 +154,13 @@
 	 };
 
         map.on('dblclick', function(event){
-          //console.log(event.latlng);
+          console.log(event.latlng);
           var pp = event.latlng;
           var dd = map.project(L.latLng(pp.lat,pp.lng),map.getMaxZoom);
+          console.log(dd);
           window.zz = map.getZoom();
-          window.vx = Math.floor(dd.x*{{ tilesX }});
-          window.vy = Math.floor(dd.y*{{ tilesY }});
+          window.vx = Math.floor(dd.x/window.factor);
+          window.vy = Math.floor(dd.y/window.factor);
 	      selectTile(vx,vy,tileSize,zz);
           });
 
@@ -162,8 +169,8 @@
              var pp = event.latlng;
              var dd = map.project(L.latLng(pp.lat,pp.lng),map.getMaxZoom);
              window.zz = map.getZoom();
-             window.vx = Math.floor(dd.x*{{ tilesX }});
-             window.vy = Math.floor(dd.y*{{ tilesY }});
+             window.vx = Math.floor(dd.y/window.factor);
+             window.vy = Math.floor(dd.y/window.factor);
              selectTile(vx,vy,tileSize,zz);
             });
 
