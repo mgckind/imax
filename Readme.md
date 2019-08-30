@@ -1,6 +1,6 @@
 # Cutouts image explorer
 
-This is an interactive tool for visualize and classify multiple images at a time. It written in Python and Javascript. It is based on [Leaflet](https://leafletjs.com/) and it reads the images from a single directory (there is no need for multiple resolutions as images are scaled dynamically). It running asyncio server in the back end and support up 10,000 images reasonable well. I can load more images but it will slower.
+This is an interactive tool for visualize and classify multiple images at a time. It written in Python and Javascript. It is based on [Leaflet](https://leafletjs.com/) and it reads the images from a single directory (there is no need for multiple resolutions as images are scaled dynamically). It running asyncio server in the back end and support up 10,000 images reasonable well. It can load more images but it will slower.
 
 You can move and label images all from the keyboard.
 
