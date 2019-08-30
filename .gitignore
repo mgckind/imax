@@ -31,3 +31,6 @@ yarn-debug.log*
 yarn-error.log*
 
 cutouts/*
+.ipynb_checkpoints/*
+python_server/.ipynb_checkpoints/*
+

@@ -51,7 +51,7 @@ def get_tile(x, y, z, inv, idx):
         new_im.save(byteIO, "PNG")
         return byteIO.getvalue()
     except Exception as e:
-        logging.warning(e)
+        logging.debug(e)
         return None
 
 
@@ -85,12 +85,13 @@ async def info(request):
         name, classid = c.fetchone()
         logging.info("Selected: x={}, y={}, ic={}".format(x, y, ic))
         st = 200
-    except:
+    except Exception as e:
+        logging.debug(e)
         st = 404
         ic = -1
         classid = -1
     if ic >= 0:
-        logging.info("Galaxy: {}, Class: {}".format(name, classid))
+        logging.info("  Galaxy: {}, Class: {}".format(name, classid))
     else:
         name = ""
     response = web.json_response({"name": name, "class": classid, "status": st})
@@ -352,13 +353,15 @@ def read_config(conf, force_copy=False, n_images=None, no_read_images=False):
             out.write(yaml.dump(config))
     NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
     MAXZOOM = np.log2(NTILES)
+    MINZOOM = max(0, MAXZOOM - 4)
     TILESIZE = config["tileSize"]
     logging.info(
-        "{} max tiles in one side, {} maxzoom, {} maxsize".format(
-            NTILES, MAXZOOM, NTILES * TILESIZE
+        "{} max tiles in one side, maxzoom = {}, minzoom = {}, maxsize = {}".format(
+            NTILES, MAXZOOM, MINZOOM, NTILES * TILESIZE
         )
     )
-    logging.info("NX x NY = {} x {}".format(NX, NY))
+    logging.info("Input array NX x NY = {} x {}".format(NX, NY))
+    logging.info("Actual array NX x NY = {} x {}".format(NX, nimages // NX))
     return (
         images,
         total_images,
@@ -435,7 +438,7 @@ if __name__ == "__main__":
         logging.error("config.yaml not found. Use config_template.yaml as example")
         logging.error("Exiting")
         sys.exit()
-    logging.basicConfig(level=logging.DEBUG)
+    #logging.basicConfig(level=logging.INFO)
     images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
         "config.yaml", force_copy=True
     )
