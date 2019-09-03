@@ -56,7 +56,7 @@ class MainHandler(BaseHandler):
         config["tilesX"] = ntiles
         config["tilesY"] = ntiles
         config["maxZoom"] = int(np.log2(ntiles))
-        config["minZoom"] = max(config["maxZoom"] - 4, 0)
+        config["minZoom"] = max(config["maxZoom"] - 3, 0)
         tilesize = config["tileSize"]
         config["maxXrange"] = tilesize * nx
         config["maxYrange"] = tilesize * ny

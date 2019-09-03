@@ -28,6 +28,8 @@ def get_tile(x, y, z, inv, idx):
     try:
         if x < 0:
             raise
+        if y < 0:
+            raise
         new_im = Image.new("RGB", (TILESIZE, TILESIZE), "#dddddd")
         itiles = int(NTILES / (2 ** z))
         resize = int(TILESIZE / itiles)
@@ -352,16 +354,16 @@ def read_config(conf, force_copy=False, n_images=None, no_read_images=False):
         with open(outyaml, "w") as out:
             out.write(yaml.dump(config))
     NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
-    MAXZOOM = np.log2(NTILES)
-    MINZOOM = max(0, MAXZOOM - 4)
+    MAXZOOM = np.log2(NTILES) 
+    MINZOOM = max(0, MAXZOOM - 3)
     TILESIZE = config["tileSize"]
     logging.info(
-        "{} max tiles in one side, maxzoom = {}, minzoom = {}, maxsize = {}".format(
+        "{} max tiles in one side, maxzoom = {}, minzoom = {}, maxsize = {} pxs".format(
             NTILES, MAXZOOM, MINZOOM, NTILES * TILESIZE
         )
     )
     logging.info("Input array NX x NY = {} x {}".format(NX, NY))
-    logging.info("Actual array NX x NY = {} x {}".format(NX, nimages // NX))
+    logging.info("Actual array NX x NY = {} x {}".format(NX, int(np.ceil(nimages / NX))))
     return (
         images,
         total_images,

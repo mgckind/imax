@@ -44,10 +44,13 @@
       var mcy = -1 * {{ heightDiv }}/Math.pow(2, {{ minZoom }} + 1);
       var mcx = 1 * {{ widthDiv }}/Math.pow(2, {{ minZoom }} + 1);
 
+      console.log('mcx, mcy', mcx, mcy);
+
 
       var map = L.map('map', {
         dragging: true,
         zoomDelta: 1,
+        noWrap: true,
         fullscreenControl: false,
         attributionControl: false,
         zoomControl:false,
