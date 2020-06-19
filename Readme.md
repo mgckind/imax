@@ -74,29 +74,37 @@ This is the Help window displayed
 This is the template config file to use:
 
 ```
-dataname: '{FILL ME}' #Name for the sqlite DB and config file
-path: '{FILL ME}' #Path to png images
-nimages: 1500 #Number of objects to be displayed even if there are more in the folder
-xdim: 100 #X dimension for the display
-ydim: 30 #Y dimension for the display
-tileSize: 256 #Size of the tile for which images are resized at max zoom level
-minXrange: 0
-minYrange: 0
+#### DISPLAY
+display:
+  dataname: '{FILL ME}' #Name for the sqlite DB and config file
+  path: '{FILL ME}'
+  nimages: 1200 #Number of objects to be displayed even if there are more in the folder
+  xdim: 40 #X dimension for the display
+  ydim: 30 #Y dimension for the display
+  tileSize: 256 #Size of the tile for which images are resized at max zoom level
+  minXrange: 0
+  minYrange: 0
+  deltaZoom: 3 #default == 3
 #### SERVER
 server:
   ssl: false #use ssl, need to have certificates
   sslName: test #prefix of .crt and .key files inside ssl/ folder e.g., ssl/{sslName.key}
   host: 'http://localhost' #if using ssl, change to https
   port: 8888
+  rootUrl: '/cexp' #root url for server, e.g. request are made to /cexp/, if None use "/"
   #workers: None # None will default to the workers in the machine
 #### CLIENT
 client:
   host: 'http://localhost'
   port: 8000
-#### classes, use any classes from 0 to 9
+#### OPERATIONS options
+operation:
+  updates: true #allows to update and/or remove classes to images, false and classes are fixed.
+#### CLASSES
+#### classes, use any classes from 0 to 9, class 0 is for hidden! class -1 is no class
 classes:
-    - Elliptical: 9
-    - Spiral: 8
-    - Other: 7
     - Delete: 0
+    - Spiral: 8
+    - Elliptical: 9
+    - Other: 7
 ```
