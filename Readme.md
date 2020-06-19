@@ -25,7 +25,7 @@ Edit the `config.yaml` file to have the correct parameters, see [Configuration](
 
 Start the server:
 
-	   python3 server_aio.py
+	   python3 server.py
 
 Start the client and visit the url printed python_server:
 
@@ -48,7 +48,7 @@ If you are running locally you can go to [http://localhost:8000/](http://localho
 
 3. Start the server container and attach the volume with images, connect to network and expose port 8888 to localhost
 
-           docker run -d --name server -p 8888:8888 -v {PATH TO CONFIG FILE}:/home/explorer/server/config.yaml -v {PATH TO LOCAL IMAGES}:{PATH TO CONTAINER IMAGES} --network cutouts cexp python server_aio.py
+           docker run -d --name server -p 8888:8888 -v {PATH TO CONFIG FILE}:/home/explorer/server/config.yaml -v {PATH TO LOCAL IMAGES}:{PATH TO CONTAINER IMAGES} --network cutouts cexp python server.py
 
 4. Start the client container, connect to network and expose the port 8000 to local host
 
@@ -65,7 +65,7 @@ This is the Help window displayed
 
 ----
 
-<h3>Help</h3> <hr><span><img src="icons/fa-square-o.png"/> -&gt; Fullscreen</span> <br><span><img src="icons/fa-star-half-o.png"/> -&gt; Invert colors</span> <br><span><img src="icons/fa-eye.png"/>/<img src="icons/fa-eye-slash.png"/> -&gt; Toggle On/Off classified tiles. <br>First time it reads from DB.</span> <br> <span><img src="icons/fa-random.png"/> -&gt; Random. Show a new random subsample (if available data is larger)</span> <br><span><img src="icons/fa-filter.png"/> -&gt; Apply filter to the displayed data.</span> <br> Use the checkboxes on the left bottom side. -1 means no classified. <br><span><img src="icons/fa-refresh.png"/> -&gt; Reset fiters and view. Do not display deleted images.</span> <br> <hr><p> Move around with mouse and keyboard , use the mouse wheel to zoom in/out and double click to focus on one image.</p><h4> Keyboard </h4>Use "w","a","s","d" to move the seleted tile and the keyboard numbers to apply a class as defined in the configuration file <br>Use "+", "-" to zoom in/out <br> Use "c" to clear any class selection <br> Use "t" to toggle on/off the classes <br>Use "h" to toggle on/off the Help<br> Use "f" to toggle on/off Full screen <br>Defined classes will appear at the bottom right side of the map
+<h3>Help</h3> <hr><span><img src="icons/fa-square-o.png"/> -&gt; Fullscreen</span> <br><span><img src="icons/fa-star-half-o.png"/> -&gt; Invert colors</span> <br><span><img src="icons/fa-eye.png"/>/<img src="icons/fa-eye-slash.png"/> -&gt; Toggle On/Off classified tiles. <br>First time it reads from DB.</span> <br> <span><img src="icons/fa-random.png"/> -&gt; Random. Show a new random subsample (if available data is larger)</span> <br><span><img src="icons/fa-filter.png"/> -&gt; Apply filter to the displayed data.</span> <br> Use the checkboxes on the left bottom side. -1 means no classified. <br><span><img src="icons/fa-refresh.png"/> -&gt; Reset filters and view. Do not display deleted images.</span> <br> <hr><p> Move around with mouse and keyboard , use the mouse wheel to zoom in/out and double click to focus on one image.</p><h4> Keyboard </h4>Use "w","a","s","d" to move the selected tile and the keyboard numbers to apply a class as defined in the configuration file <br>Use "+", "-" to zoom in/out <br> Use "c" to clear any class selection <br> Use "t" to toggle on/off the classes <br>Use "h" to toggle on/off the Help<br> Use "f" to toggle on/off Full screen <br>Defined classes will appear at the bottom right side of the map
 
 ----
 

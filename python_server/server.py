@@ -46,7 +46,10 @@ def get_tile(x, y, z, inv, idx):
                     im = Image.open(images[ic])
                     im = im.resize((resize, resize))
                     if inv == 1:
-                        im = PIL.ImageOps.invert(im)
+                        if np.shape(im)[-1] == 3:
+                            im = PIL.ImageOps.invert(im)
+                        else:
+                            im = PIL.ImageOps.invert(im.convert("RGB"))
                 new_im.paste(im, (x_off, y_off))
                 y_off += resize
             x_off += resize
@@ -61,6 +64,14 @@ async def update(request):
     userdb = os.path.join(DBFILES, request.query["user"] + '.db')
     conn = sqlite3.connect(userdb)
     c = conn.cursor()
+    c.execute('SELECT updates from CONFIG')
+    updates = c.fetchone()[0]
+    if updates == 0:
+        logging.info("No UPDATES Allowed")
+        response = web.Response(text="", status=200)
+        conn.commit()
+        conn.close()
+        return response
     gid = request.query["gid"]
     class_input = int(request.query["class"])
     c.execute("UPDATE IMAGES SET class = {} where name = '{}'".format(class_input, gid))
@@ -101,7 +112,6 @@ async def info(request):
     conn.close()
     return response
 
-
 async def infoall(request):
     userdb = os.path.join(DBFILES, request.query["user"] + '.db')
     conn = sqlite3.connect(userdb)
@@ -126,6 +136,58 @@ async def infoall(request):
     return response
 
 
+
+
+async def query(request):
+    global idx, NX, NY, NTILES
+    logging.info("QUERY: ")
+    userdb = os.path.join(DBFILES, request.query["user"] + '.db')
+    conn = sqlite3.connect(userdb)
+    c = conn.cursor()
+    qq = request.query["query"]
+    #qq = "SELECT name from META where META.name = '00526.png'"
+    logging.info("{}".format(qq))
+    long_qq = 'select IMAGES.id from IMAGES, ({}) F where IMAGES.name = F.name and IMAGES.display = 1 and IMAGES.class != 0 order by id;'.format(qq)
+    try:
+        c.execute(long_qq)
+        all_ids = c.fetchall()
+    except Exception as e:
+        logging.error(str(e))
+        conn.commit()
+        conn.close()
+        if qq.strip() == '':
+            msg = "Empty query"
+        else:
+            msg = str(e) 
+        response = web.json_response({"msg": msg,  "status": "400"})
+        return response
+    all_filtered = [i[0] for i in all_ids]
+    if len(all_filtered) > 0:
+        default_nx = int(np.ceil(np.sqrt(len(all_filtered))))
+        NX = default_nx
+        NY = default_nx
+        update_config(NX, NY, len(all_filtered), userdb)
+        NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
+        logging.info("NX x NY = {} x {}. NTILES = {}".format(NX, NY, NTILES))
+    temp = np.zeros(NX * NY, dtype="int") - 1
+    image_idx = all_filtered
+    temp[: len(image_idx)] = image_idx
+    temp = temp.reshape((NY, NX))
+    idx = np.pad(
+        temp, ((0, NTILES - NY), (0, NTILES - NX)), "constant", constant_values=-1
+    )
+    c.execute("DELETE FROM COORDS")
+    for i in image_idx:
+        vy, vx = np.where(idx == i)
+        c.execute("INSERT INTO COORDS VALUES ({},{},{})".format(i, vx[0], vy[0]))
+    conn.commit()
+    conn.close()
+    logging.info(" {} images filtered and displayed".format(len(image_idx)))
+    response = web.json_response({"msg": "ok",  "status": "200"})
+    return response
+
+
+
 async def filter(request):
     global idx, NX, NY, NTILES
     userdb = os.path.join(DBFILES, request.query["user"] + '.db')
@@ -136,7 +198,7 @@ async def filter(request):
     conn = sqlite3.connect(userdb)
     c = conn.cursor()
     if len(checked) == 0:
-        c.execute("SELECT id FROM IMAGES where display = 1 order by id")
+        c.execute("SELECT id FROM IMAGES where display = 1 and class != 0 order by id")
     else:
         c.execute(
             "SELECT id FROM IMAGES where display = 1 and class in ({}) order by id".format(
@@ -146,10 +208,17 @@ async def filter(request):
     all_ids = c.fetchall()
     all_filtered = [i[0] for i in all_ids]
     if len(all_filtered) > 0:
-        default_nx = int(np.ceil(np.sqrt(len(all_filtered))))
-        NX = default_nx
-        NY = default_nx
-        update_config(NX, NY, len(all_filtered), userdb)
+        if len(checked) == 0:
+            images0, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
+                "config.yaml", n_images=len(all_filtered)
+            )
+            del images0
+            update_config(NX, NY, len(all_filtered), userdb)
+        else:
+            default_nx = int(np.ceil(np.sqrt(len(all_filtered))))
+            NX = default_nx
+            NY = default_nx
+            update_config(NX, NY, len(all_filtered), userdb)
         NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
         logging.info("NX x NY = {} x {}. NTILES = {}".format(NX, NY, NTILES))
     temp = np.zeros(NX * NY, dtype="int") - 1
@@ -176,7 +245,7 @@ async def random(request):
     logging.info("RANDOMIZE: ")
     conn = sqlite3.connect(userdb)
     c = conn.cursor()
-    c.execute("SELECT id FROM IMAGES where display = 1 order by id")
+    c.execute("SELECT id FROM IMAGES where display = 1 and class != 0 order by id")
     all_ids = c.fetchall()
     all_displayed = [i[0] for i in all_ids]
     nim = rn.randint(10, nimages)
@@ -274,7 +343,9 @@ async def main(request):
     z = int(request.query["z"])
     inv = int(request.query["inv"])
     logging.debug("{}, {}, {}, {}".format(x, y, z, inv))
-    tile = await request.app.loop.run_in_executor(executor, get_tile, x, y, z, inv, idx)
+    loop = asyncio.get_running_loop()
+    #tile = await request.app.loop.run_in_executor(executor, get_tile, x, y, z, inv, idx)
+    tile = await loop.run_in_executor(executor, get_tile, x, y, z, inv, idx)
     if tile is not None:
         response = web.Response(body=tile, status=200, content_type="image/png")
     else:
@@ -294,34 +365,45 @@ async def init_db(request):
     if idx is None:
         logging.info("Creating idx for the first time")
         idx, blacklist = initialize(images, nimages, NX, NY, NTILES, userdb)
+        merge_db(userdb)
     response = web.Response(text="", status="200")
     return response
 
 
-def update_config(NX, NY, nimages, userdb):
+def update_config(NX, NY, nimages, userdb, updates=None):
     conn = sqlite3.connect(userdb)
     c = conn.cursor()
-    chunk = [0, nimages, NX, NY]
-    c.execute("INSERT or REPLACE INTO CONFIG VALUES (?,?,?,?)", chunk)
+    if updates is None:
+        c.execute('SELECT updates from CONFIG')
+        updates = c.fetchone()[0]
+    chunk = [0, nimages, NX, NY, updates]
+    c.execute("INSERT or REPLACE INTO CONFIG VALUES (?,?,?,?,?)", chunk)
+
     conn.commit()
     conn.close()
+
+def read_config_single(conf, arg1, arg2):
+    with open(conf, "r") as cfg:
+        config = yaml.load(cfg, Loader=yaml.FullLoader)
+    return config[arg1][arg2]
+
 
 
 def read_config(conf, force_copy=False, n_images=None, no_read_images=False):
     with open(conf, "r") as cfg:
-        config = yaml.load(cfg)
+        config = yaml.load(cfg, Loader=yaml.FullLoader)
     if no_read_images:
         images = []
         total_images = 1e9
     else:
-        images = glob.glob(os.path.join(config["path"], "*.png"))
+        images = sorted(glob.glob(os.path.join(config["display"]["path"], "*.png")))
         total_images = len(images)
     if total_images == 0:
         logging.error("Images not found!. Please check path")
         sys.exit(0)
-    dbname = config["dataname"] + ".db"
+    dbname = config["display"]["dataname"] + ".db"
     logging.info("Total Images in path: {}".format(total_images))
-    nimages = int(config["nimages"])
+    nimages = int(config["display"]["nimages"])
     if n_images is not None:
         nimages = n_images
     if nimages <= 0:
@@ -335,8 +417,8 @@ def read_config(conf, force_copy=False, n_images=None, no_read_images=False):
         )
         nimages = total_images
     logging.info("No Images displayed: {}".format(nimages))
-    NX = config["xdim"]
-    NY = config["ydim"]
+    NX = config["display"]["xdim"]
+    NY = config["display"]["ydim"]
     if NX * NY < nimages:
         default_nx = int(np.ceil(np.sqrt(nimages)))
         logging.warning(
@@ -346,17 +428,18 @@ def read_config(conf, force_copy=False, n_images=None, no_read_images=False):
         )
         NX = default_nx
         NY = default_nx
-    config["xdim"] = NX
-    config["ydim"] = NY
-    config["nimages"] = nimages
-    outyaml = config["dataname"] + ".yaml"
+    config["display"]["xdim"] = NX
+    config["display"]["ydim"] = NY
+    config["display"]["nimages"] = nimages
+    outyaml = config["display"]["dataname"] + ".yaml"
     if force_copy:
         with open(outyaml, "w") as out:
             out.write(yaml.dump(config))
     NTILES = int(2 ** np.ceil(np.log2(max(NX, NY))))
     MAXZOOM = np.log2(NTILES) 
-    MINZOOM = max(0, MAXZOOM - 3)
-    TILESIZE = config["tileSize"]
+    DELTAZOOM = config["display"]["deltaZoom"]
+    MINZOOM = max(0, MAXZOOM - DELTAZOOM)
+    TILESIZE = config["display"]["tileSize"]
     logging.info(
         "{} max tiles in one side, maxzoom = {}, minzoom = {}, maxsize = {} pxs".format(
             NTILES, MAXZOOM, MINZOOM, NTILES * TILESIZE
@@ -389,7 +472,7 @@ def create_db(filedb):
         "create table if not exists COORDS " "(id int primary key, vx int, vy int)"
     )
     c.execute(
-        "create table if not exists CONFIG " "(id int primary key, nimages int , nx int, ny int)"
+        "create table if not exists CONFIG " "(id int primary key, nimages int , nx int, ny int, updates int default 1)"
     )
     conn.commit()
     conn.close()
@@ -403,8 +486,30 @@ def initiate_db(filedb, images):
     conn.commit()
     conn.close()
 
+def merge_db(dbname):
+    conn = sqlite3.connect(dbname)
+    c = conn.cursor()
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='{}';".format('META'))
+    results = c.fetchall()
+    if len(results) == 0:
+        logging.info("MERGE: Table META does not exist")
+    else:
+        logging.info("MERGE: Merging tables")
+        c.execute("""UPDATE IMAGES
+                        SET
+                        class = ( select META.class from META  where META.name = IMAGES.name)
+                        WHERE
+                        EXISTS (
+                        SELECT *
+                        FROM META
+                        WHERE META.name = IMAGES.name)""")
+    conn.commit()
+    conn.close()
+
+
 
 def initialize(images, nimages, NX, NY, NTILES, dbname):
+    logging.info('Initializing {}'.format(dbname))
     temp = np.zeros(NX * NY, dtype="int") - 1
     image_idx = rn.sample(range(len(images)), nimages)  # np.arange(nimages)
     conn = sqlite3.connect(dbname)
@@ -428,7 +533,11 @@ def initialize(images, nimages, NX, NY, NTILES, dbname):
         c.execute("INSERT INTO COORDS VALUES ({},{},{})".format(i, vx[0], vy[0]))
     conn.commit()
     conn.close()
-    update_config(NX, NY, nimages, dbname)
+    updates = read_config_single('config.yaml', 'operation', 'updates')
+    if updates:
+        update_config(NX, NY, nimages, dbname, 1)
+    else:
+        update_config(NX, NY, nimages, dbname, 0)
     return idx, blacklist
 
 
@@ -445,7 +554,7 @@ if __name__ == "__main__":
         "config.yaml", force_copy=True
     )
     with open("config.yaml", "r") as cfg:
-        configT = yaml.load(cfg)
+        configT = yaml.load(cfg, Loader=yaml.FullLoader)
     if configT["server"]["ssl"]:
         sslname = configT["server"]["sslName"]
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
@@ -463,7 +572,7 @@ if __name__ == "__main__":
     cors = aiohttp_cors.setup(
         app,
         defaults={
-            # Allow all to read all CORS-enabled resources from clien
+            # Allow all to read all CORS-enabled resources from client
             "*": aiohttp_cors.ResourceOptions()
         },
     )
@@ -476,6 +585,7 @@ if __name__ == "__main__":
     get = cors.add(app.router.add_resource("{rootUrl}getall".format(rootUrl=root)))
     sor = cors.add(app.router.add_resource("{rootUrl}sort".format(rootUrl=root)))
     fil = cors.add(app.router.add_resource("{rootUrl}filter".format(rootUrl=root)))
+    qry = cors.add(app.router.add_resource("{rootUrl}query".format(rootUrl=root)))
     res = cors.add(app.router.add_resource("{rootUrl}reset".format(rootUrl=root)))
     red = cors.add(app.router.add_resource("{rootUrl}redraw".format(rootUrl=root)))
     ini = cors.add(app.router.add_resource("{rootUrl}initdb".format(rootUrl=root)))
@@ -485,6 +595,7 @@ if __name__ == "__main__":
     cors.add(upd.add_route("GET", update))
     cors.add(sor.add_route("GET", sort))
     cors.add(fil.add_route("GET", filter))
+    cors.add(qry.add_route("GET", query))
     cors.add(res.add_route("GET", reset))
     cors.add(red.add_route("GET", redraw))
     cors.add(ini.add_route("GET", init_db))

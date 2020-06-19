@@ -7,12 +7,14 @@
     <link rel="stylesheet" href="static/plugins/L.Control.SlideMenu.css">
     <link rel="stylesheet" href="static/plugins/easy-button.css">
     <link rel="stylesheet" href="static/cutouts.css">
+    <link rel="stylesheet" href="static/plugins/leaflet-search.css">
     <script src="static/plugins/easy-button.js"></script>
     <script src="static/plugins/Leaflet.Control.Custom.js"></script>
     <script src="static/plugins/L.Control.SlideMenu.js"></script>
+    <script src="static/plugins/leaflet-search.js"></script>
     <script src="static/help.js"></script>
     <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
-<link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
+  <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
 
 
   <style>
@@ -22,6 +24,20 @@
       height: {{ heightDiv }}px;
       overflow: hidden;
     }
+    .search-bar {
+      visibility: hidden;
+    }
+    .search-err {
+      color:red;
+      background-color: white;
+      border: none;
+      text-decoration: none;
+      height: 14px;
+      width: 15em;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
     </style>
 </head>
 
@@ -180,10 +196,12 @@
 
 
 
-	  map.on('keypress', function(event){
+    map.on('keypress', keyboardf);
+    
+    function keyboardf(event){
         //console.log(event.originalEvent.keyCode);
-	    event.originalEvent.preventDefault();
-	    event.originalEvent.stopPropagation();
+	    //event.originalEvent.preventDefault();
+	    //event.originalEvent.stopPropagation();
 
 	    if (event.originalEvent.keyCode == 119) {
               vy = vy-1;
@@ -233,12 +251,13 @@
             if (event.originalEvent.key == '8') {custom(8);};
             if (event.originalEvent.key == '9') {custom(9);};
 
-            });
+            };
 
 
         var southWest = map.unproject([{{ minYrange }}, {{ maxYrange }}], map.getMaxZoom());
         var northEast = map.unproject([{{ maxXrange }}, {{ minXrange }}], map.getMaxZoom());
         map.setMaxBounds(new L.LatLngBounds(southWest, northEast));
+
 
       var sideHelp = L.control.slideMenu(contentHelp, {'icon': 'fa-question'}).addTo(map);
       map.addControl(new L.Control.Fullscreen());
@@ -251,6 +270,8 @@
           }
           layer.redraw();
       }, 'Invert colors').addTo(map);
+      
+    
 
     var toggleClasses = L.easyButton({
               states: [{
@@ -275,7 +296,7 @@
 
       L.easyButton( '<i class="myhelp fa fa-random" aria-hidden="true"></i>', function(){
           var r = confirm("Are you sure you want to display a new random sample?");
-          if (r) {reset();};
+          if (r) {random();};
       }, 'New random set').addTo(map);
       L.easyButton( '<i class="myhelp fa fa-filter" aria-hidden="true"></i>', function(){
           filter();
@@ -283,6 +304,9 @@
       L.easyButton( '<i class="myhelp fa fa-refresh" aria-hidden="true"></i>', function(){
           redraw();
       }, 'Redraw/Reset view').addTo(map);
+      L.easyButton( '<i class="myhelp fa fa-search" aria-hidden="true"></i>', function(){
+          search();
+      }, 'Search').addTo(map);
 
      var contentBottom = '' ;
      var contentBoxes = ' Filter: ' ;
@@ -295,6 +319,19 @@
     contentBoxes += '<input type="checkbox" id="checkbox_{{ list(cl.values())[0] }}" >{{ list(cl.values())[0] }}'
     {% end %}
     contentBoxes += '<input type="checkbox" id="checkbox_noclass"/>-1'
+
+    contentSearch = '<div id="searchBox" style="visibility: hidden;">'
+    contentSearch += '<input  onkeyup=inputSearch() type="search" id="mySearch" class="search-bar"  placeholder="Query">'
+
+    contentSearch += '<button type="button" id="mySearchButton" class="search-bar" onclick=doSearch()> Send </button>'      
+    contentSearch += '</br>'
+    contentSearch += '<input disabled type="search" id="mySearchMsg"  class="search-bar search-err">'
+    contentSearch += '</div>'
+      L.control.custom({
+        position: 'topleft',
+        content: contentSearch,
+
+      }).addTo(map);
 
       L.control.custom({
           position: 'bottomright',
@@ -325,6 +362,9 @@
 
 
         function custom(val) {
+          let updates = {{ updates }};
+          console.log(updates)
+          if (updates == 0) return;
           var valid = window.validClassesCode.includes(val);
           if (valid){
           console.log(window.classesName[val]);
@@ -346,6 +386,9 @@
       }; //custom
 
       function clear_selected(){
+          let updates = {{ updates }};
+          console.log(updates)
+          if (updates == 0) return;
           if (window.classifiedTiles[window.selected]) {
               map.removeLayer(window.classifiedTiles[window.selected].polygon);
               delete window.classifiedTiles[window.selected];
@@ -422,6 +465,55 @@
           map.addLayer(layer);
           layer.redraw();
           }
+
+        function inputSearch(){
+          if (event.keyCode === 13) doSearch();
+          event.stopPropagation();
+          event.preventDefault();
+        }
+        function search(){
+
+          let tempBox = document.getElementById("searchBox");
+          let temp = document.getElementById("mySearch");
+          let tempButton = document.getElementById("mySearchButton");
+          let tempMsg = document.getElementById("mySearchMsg");
+          if (tempBox.style.visibility == "hidden") {
+            tempBox.style.visibility = "visible";
+            tempButton.style.visibility = "visible";
+            temp.style.visibility = "visible";
+            tempMsg.value = '';
+            map.off('keypress', keyboardf);
+          }
+          else {
+            tempBox.style.visibility = "hidden";
+            tempButton.style.visibility = "hidden";
+            temp.style.visibility = "hidden";
+            tempMsg.style.visibility = "hidden";
+            map.on('keypress', keyboardf);
+          }
+
+        }
+
+        function doSearch(){
+          let temp = document.getElementById("mySearch");
+          let qq = temp.value;
+          $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}query", {user: window.username, query:qq}, function(data, status){
+            console.log(data);
+            if (data.status == "200") {
+                 map.removeLayer(layer);
+                 map.addLayer(layer);
+                 layer.redraw();
+                 location.reload(true);
+              }
+            else {
+
+            let tempMsg = document.getElementById("mySearchMsg");
+            tempMsg.style.visibility = "visible";
+            tempMsg.value = data.msg;
+            }
+              });
+        }
+
         function filter() {
             var check = '';
         window.checked = [];
@@ -434,7 +526,7 @@
           var temp = document.getElementById("checkbox_noclass");
           if (temp.checked){ check += -1+',';}
 
-          $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}filter", {user: window.username, checked:check}, function(){
+          $.get("{{ serverHost }}:{{ serverPort }}{{ rootUrl }}filter", {user: window.username, checked:check}, function(data){
               map.removeLayer(layer);
               map.addLayer(layer);
               layer.redraw();

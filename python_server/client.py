@@ -9,7 +9,7 @@ import random as rn
 import string
 import logging
 import sqlite3
-from server_aio import read_config
+from server import read_config, read_config_single
 
 coloredlogs.install(level=logging.INFO)
 VOWELS = "aeiou"
@@ -34,6 +34,11 @@ class MainHandler(BaseHandler):
         userdb = os.path.join(DBFILES, username + '.db')
         inyaml = "config.yaml"
         logging.info("Reading {}".format(inyaml))
+        updates_bool = read_config_single(inyaml, 'operation','updates')
+        if updates_bool:
+            updates = 1
+        else:
+            updates = 0
         images, total_images, nimages, dbname, NX, NY, NTILES, MAXZOOM, TILESIZE, config = read_config(
             inyaml, no_read_images=True
         )
@@ -41,14 +46,15 @@ class MainHandler(BaseHandler):
         if os.path.exists(userdb):
             conn = sqlite3.connect(userdb)
             c = conn.cursor()
-            c.execute('SELECT nimages, nx, ny from CONFIG')
-            nimages, NX, NY = c.fetchone()
+            c.execute('SELECT nimages, nx, ny, updates from CONFIG')
+            nimages, NX, NY, updates = c.fetchone()
             conn.close()
         config["serverPort"] = config["server"]["port"]
         config["serverHost"] = config["server"]["host"]
         config["rootUrl"] = config["server"]["rootUrl"]
         config["xdim"] = NX
         config["ydim"] = NY
+        config["updates"] = updates
         config["nimages"] = nimages
         nx = config["xdim"]
         ny = config["ydim"]
@@ -56,8 +62,11 @@ class MainHandler(BaseHandler):
         config["tilesX"] = ntiles
         config["tilesY"] = ntiles
         config["maxZoom"] = int(np.log2(ntiles))
-        config["minZoom"] = max(config["maxZoom"] - 3, 0)
-        tilesize = config["tileSize"]
+        config["minZoom"] = max(config["maxZoom"] - config["display"]["deltaZoom"], 0)
+        tilesize = config["display"]["tileSize"]
+        config["tileSize"] = tilesize
+        config["minYrange"] = config["display"]["minYrange"]
+        config["minXrange"] = config["display"]["minXrange"]
         config["maxXrange"] = tilesize * nx
         config["maxYrange"] = tilesize * ny
         initial_w = nx * tilesize / int(ntiles / (2 ** config["minZoom"]))
@@ -82,7 +91,7 @@ if __name__ == "__main__":
         sys.exit()
     app = make_app()
     with open("config.yaml", "r") as cfg:
-        config = yaml.load(cfg)
+        config = yaml.load(cfg, Loader=yaml.FullLoader)
     port = config["client"]["port"]
     logging.info("======== Running on http://0.0.0.0:{} ========".format(port))
     logging.info("(Press CTRL+C to quit)")
