@@ -1,10 +1,10 @@
-# Cutouts image explorer
+# IMAX: Interactive Multi-image Analysis eXplorer
 
-This is an interactive tool for visualize and classify multiple images at a time. It written in Python and Javascript. It is based on [Leaflet](https://leafletjs.com/) and it reads the images from a single directory (there is no need for multiple resolutions as images are scaled dynamically). It running asyncio server in the back end and support up 10,000 images reasonable well. It can load more images but it will slower.
+This is an interactive tool for visualize and classify multiple images at a time. It written in Python and Javascript. It is based on [Leaflet](https://leafletjs.com/) and it reads the images from a single directory and there is no need for multiple resolutions folders as images are scaled dynamically when zooming in/out. It runs an asyncio server in the back end and supports up 10,000 images reasonable well. It can load more images but it will slower. It runs using multiple cores and has been tested with over 50K images.
 
 You can move and label images all from the keyboard.
 
-You can see a (not very good) gif demo ot the tool in action, a live demo or a better video is [here](https://vimeo.com/319571639)
+You can see a (not very good) gif demo ot the tool in action, a [live demo](https://deslabs.ncsa.illinois.edu/cexp/) or a better video is [here](https://vimeo.com/319571639)
 
 ![Demo](demo/demo.gif)
 
@@ -14,8 +14,8 @@ You can see a (not very good) gif demo ot the tool in action, a live demo or a b
 
 Clone this repository:
 
-		git clone https://github.com/mgckind/cutouts-explorer.git
-		cd cutouts-explorer/python_server
+		git clone https://github.com/mgckind/imax.git
+		cd imax/python_server
 
 Create a config file template:
 
@@ -37,22 +37,22 @@ If you are running locally you can go to [http://localhost:8000/](http://localho
 
 0. Create image from Dockerfile
 
-        cd cutouts-explorer
-        docker build -t cexp .
+        cd imax
+        docker build -t imax .
 
 1. Create an internal network so server/client can talk through the internal network (is not need for now as we are exposing both services at the localhost)
 
-        docker network create --driver bridge cutouts
+        docker network create --driver bridge imaxnet
 
 2. Create local config file to be mounted inside the containers. Create `config.yaml` based on the template, and replace the image location.
 
 3. Start the server container and attach the volume with images, connect to network and expose port 8888 to localhost
 
-           docker run -d --name server -p 8888:8888 -v {PATH TO CONFIG FILE}:/home/explorer/server/config.yaml -v {PATH TO LOCAL IMAGES}:{PATH TO CONTAINER IMAGES} --network cutouts cexp python server.py
+           docker run -d --name server -p 8888:8888 -v {PATH TO CONFIG FILE}:/home/explorer/server/config.yaml -v {PATH TO LOCAL IMAGES}:{PATH TO CONTAINER IMAGES} --network imaxnet imax python server.py
 
 4. Start the client container, connect to network and expose the port 8000 to local host
 
-           docker run -d --name client -p 8000:8000 -v {PATH TO CONFIG FILE}:/home/explorer/server/config.yaml  --network cutouts cexp python client.py
+           docker run -d --name client -p 8000:8000 -v {PATH TO CONFIG FILE}:/home/explorer/server/config.yaml  --network imaxnet imax python client.py
 
 Now the containers can talk at the localhost. 
 If you are running locally you can go to [http://localhost:8000/](http://localhost:8000/)
