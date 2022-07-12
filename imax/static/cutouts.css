@@ -1,0 +1,84 @@
+  .leaflet-container {
+    background: #dddddd;
+}
+.btn-group {
+    background: #dddddd;
+}
+#button_0 {
+    background: rgb(255,192,203);
+    background: rgba(255,192,203,0.5);
+    color: black;
+}
+
+#button_9 {
+    background: rgba(255, 255, 0);
+    background: rgba(255, 255, 0, 0.5);
+    color: black;
+}
+
+#button_8 {
+    background: rgba(255, 0, 255);
+    background: rgba(255, 0, 255, 0.5);
+    color: black;
+}
+
+#button_7 {
+    background: rgba(255, 165, 0);
+    background: rgba(255, 165, 0, 0.5);
+    color: black;
+}
+
+#button_6 {
+    background: rgba(0, 0, 255);
+    background: rgba(0, 0, 255, 0.5);
+    color: black;
+}
+
+#button_5 {
+    background: rgba(255, 0, 0);
+    background: rgba(255, 0, 0, 0.5);
+    color: black;
+}
+
+#button_4 {
+    background: rgba(240, 255, 255);
+    background: rgba(240, 255, 255, 0.5);
+    color: black;
+}
+
+#button_3 {
+    background: rgba(128,128,0);
+    background: rgba(128,128,0, 0.5);
+    color: black;
+}
+
+#button_2 {
+    background: rgba(0,255,255);
+    background: rgba(0,255,255, 0.5);
+    color: black;
+}
+
+#button_1 {
+    background: rgba(160,82,45);
+    background: rgba(160,82,45, 0.5);
+    color: black;
+}
+
+.info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+.info h4 {
+    margin: 0 0 5px;
+    color: #777;
+}
+
+.myhelp {
+    color: black;
+    font-size: 15px;
+    margin-top: 8px;
+}

@@ -30,7 +30,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-cutouts/*
+
 .ipynb_checkpoints/*
 python_server/.ipynb_checkpoints/*
-
+imax/__pycache__
+imax/.ipynb_checkpoints/*
+images/
+dbpath/

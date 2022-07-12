@@ -1,0 +1,343 @@
+<html>
+<head>
+    <link rel="stylesheet" href="static/leaflet/dist/leaflet.css"/>
+    <script src="static/jquery.min.js"></script>
+    <script src="static/leaflet/dist/leaflet.js"></script>
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="static/plugins/L.Control.SlideMenu.css">
+    <link rel="stylesheet" href="static/plugins/easy-button.css">
+    <link rel="stylesheet" href="static/cutouts.css">
+    <link rel="stylesheet" href="static/plugins/leaflet-search.css">
+    <script src="static/plugins/easy-button.js"></script>
+    <script src="static/plugins/Leaflet.Control.Custom.js"></script>
+    <script src="static/plugins/L.Control.SlideMenu.js"></script>
+    <script src="static/plugins/leaflet-search.js"></script>
+    <script src="static/help.js"></script>
+    <script src="static/functions.js"></script>
+    <script src='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/Leaflet.fullscreen.min.js'></script>
+  <link href='https://api.mapbox.com/mapbox.js/plugins/leaflet-fullscreen/v1.0.1/leaflet.fullscreen.css' rel='stylesheet' />
+
+
+  <style>
+    #map{ height: {{ heightDiv }}px ; width: {{ widthDiv }}px;}
+    .box {
+      width: {{ widthDiv }}px;
+      height: {{ heightDiv }}px;
+      overflow: hidden;
+    }
+    .search-bar {
+      visibility: hidden;
+    }
+    .search-err {
+      color:red;
+      background-color: white;
+      border: none;
+      text-decoration: none;
+      height: 14px;
+      width: 15em;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    #searchBox {
+      margin-left: 35px;
+      margin-top: -42px;
+    }
+
+    </style>
+</head>
+
+<body>
+
+  <div class="box">
+    <div style="width:  3000px; float:left;">
+    <div id="map"></div>
+  </div>
+  </div>
+<script>
+
+document.getElementById("map").onkeydown = function (e) {
+  if(e.keyCode == '54') {
+  e.stopPropagation();
+  }
+};
+
+window.server_url = "{{ serverHost }}:{{ serverPort }}{{ rootUrl }}"
+//compute center view
+var mcy = -1 * {{ heightDiv }}/Math.pow(2, {{ minZoom }} + 1);
+var mcx = 1 * {{ widthDiv }}/Math.pow(2, {{ minZoom }} + 1);
+console.log('mcx, mcy', mcx, mcy);
+
+var map = L.map('map', {
+  dragging: true,
+  zoomDelta: 1,
+  noWrap: true,
+  fullscreenControl: false,
+  attributionControl: false,
+  zoomControl:false,
+  crs: L.CRS.Simple,
+  keyboardPanDelta: 80,
+  }).setView([mcy,mcx], {{ minZoom }});
+
+/* Info window corner */
+var info = L.control();
+info.onAdd = function (map) {
+  this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+  this.update();
+  return this._div;
+};
+info.update = function (props) {
+  this._div.innerHTML = '<h4> {{ username }} </h4> ' +
+  ( props ? '<p>Image information</p>Name: ' + props.name + '<br /> Class: ' + props.class +
+          '<br /><button onclick="clear_selected()"> Clear(c)</button>' : '');
+};
+info.addTo(map);
+/*******/
+
+/* Main Layer*/
+var layer = L.tileLayer(window.server_url + '?x={x}&y={y}&z={z}&inv={inv}',
+  {
+    inv: 0,
+    maxZoom: {{ maxZoom }},
+    minZoom: {{ minZoom }},
+    tileSize: {{ tileSize }},
+    noWrap: true,
+    crs: L.CRS.Simple
+  })
+map.addLayer(layer);
+polygon = L.polygon([[0,0],[0,0.0001]]);
+map.addLayer(window.polygon);
+//map.keyboard.disable();
+/*******/
+
+/* Globals */
+window.onload = initdb(window.server_url, '{{ username }}');
+window.tileSize = {{ tileSize }};
+window.factor = {{ tileSize }}/Math.pow(2, {{ maxZoom }})
+window.loaded_data = false;
+window.toggle_on = false;
+window.help_on = false;
+window.updates = {{ updates }};
+window.username = '{{ username }}';
+window.colors = ['pink','sienna','cyan','olive','azure','red', 'blue', 'orange', 'magenta','yellow'];
+window.classesName = new Array(10);
+window.validClassesCode = []
+{% for idx, cl in enumerate(classes) %}
+window.validClassesCode.push( {{ list(cl.values())[0] }} );
+window.classesName[{{ list(cl.values())[0] }}] = '{{ list(cl.keys())[0] }}';
+{% end %}
+window.classifiedTiles = {};
+toggle_classes(window.server_url, window.username);
+/*********/
+
+function getCoords(vx,vy,tileSize){
+    var temp_coords = [
+    map.unproject([vx*tileSize, vy*tileSize], map.getMaxZoom()),
+    map.unproject([(vx+1)*tileSize, vy*tileSize], map.getMaxZoom()),
+    map.unproject([(vx+1)*tileSize, (vy+1)*tileSize], map.getMaxZoom()),
+    map.unproject([vx*tileSize, (vy+1)*tileSize], map.getMaxZoom())
+    ];
+    return temp_coords;
+};
+
+function selectTile(vx,vy,tileSize,zz){
+  console.log('zoom = ',zz,'vz = ',vx,'vy = ', vy);
+  map.removeLayer(window.polygon);
+  window.coords = getCoords(vx,vy,tileSize);
+  window.polygon = L.polygon(coords, {color: 'green', fillOpacity: 0.05});
+  if (zz >= {{ minZoom }} ){
+    $.get(window.server_url + "info", {user: window.username, x:vx, y:vy}, function(data, status){
+      if (data.status == 404) {
+        console.log('outside boundaries');
+        window.vx = lastvx;
+        window.vy = lastvy;
+        window.zz = lastzz;
+        selectTile(lastvx,lastvy,tileSize,lastzz);
+        return;
+      };
+      window.lastvx = vx;
+      window.lastvy = vy;
+      window.lastzz = zz;
+      console.log(data.name, data.class);
+      if (data.name == '') {
+        map.removeLayer(window.polygon);
+      }
+      else {
+        map.addLayer(window.polygon);
+      }
+      if (data.class >= 0) {
+        if (window.classifiedTiles[data.name] == undefined) {
+          window.classifiedTiles[data.name] = {
+            'class'  : data.class,
+            'polygon': L.polygon(window.coords, {color: window.colors[data.class],  fillOpacity: 0.12}) };
+        };
+      };
+      window.selected = data.name;
+      var props = { 'name': window.selected, 'class':  window.classesName[data.class] }
+      info.update(props);
+    });
+  };
+};
+
+/* Events */
+map.on('dblclick', function(event){
+  console.log(event.latlng);
+  var pp = event.latlng;
+  var dd = map.project(L.latLng(pp.lat,pp.lng),map.getMaxZoom);
+  console.log(dd);
+  window.zz = map.getZoom();
+  window.vx = Math.floor(dd.x/window.factor);
+  window.vy = Math.floor(dd.y/window.factor);
+  selectTile(vx,vy,tileSize,zz);
+});
+
+map.on('contextmenu', function(event){
+  var pp = event.latlng;
+  var dd = map.project(L.latLng(pp.lat,pp.lng),map.getMaxZoom);
+  window.zz = map.getZoom();
+  window.vx = Math.floor(dd.x/window.factor);
+  window.vy = Math.floor(dd.y/window.factor);
+  selectTile(vx,vy,tileSize,zz);
+});
+map.on('keypress', keyboardf);
+/*******/
+
+var southWest = map.unproject([{{ minYrange }}, {{ maxYrange }}], map.getMaxZoom());
+var northEast = map.unproject([{{ maxXrange }}, {{ minXrange }}], map.getMaxZoom());
+map.setMaxBounds(new L.LatLngBounds(southWest, northEast));
+
+/* Buttons */
+// 1. Help
+{% if buttons['help'] %}
+var sideHelp = L.control.slideMenu(contentHelp, {'icon': 'fa-question'}).addTo(map);
+{% end if %}
+// 2. FullScreen
+{% if buttons['fullscreen'] %}
+map.addControl(new L.Control.Fullscreen());
+{% end if %}
+// 3. Invert
+{% if buttons['invert'] %}
+L.easyButton( '<i class="myhelp fa fa-star-half-o" aria-hidden="true"></i>', function(){
+  if (layer.options.inv == 0) {
+    layer.options.inv = 1 ;
+  }
+  else {
+    layer.options.inv = 0;
+  }
+  layer.redraw();
+}, 'Invert colors').addTo(map);
+{% end if %}
+// 4. Toggle Classe
+{% if buttons['toggle'] %}
+var toggleClasses = L.easyButton({
+  states: [{
+    stateName: 'remove-classes',
+    icon: '<i class="myhelp fa fa-eye" aria-hidden="true"></i>',
+    title: 'Toggle classes off',
+    onClick: function(control) {
+      toggle_classes();
+      control.state('add-classes');
+    }
+    }, {
+    icon: '<i class="myhelp fa fa-eye-slash" aria-hidden="true"></i>',
+    stateName: 'add-classes',
+    onClick: function(control) {
+      toggle_classes();
+      control.state('remove-classes');
+    },
+    title: 'Toggle classes on'
+    }]
+});
+toggleClasses.addTo(map);
+{% end if %}
+// 5. Random
+{% if buttons['random'] %}
+L.easyButton( '<i class="myhelp fa fa-random" aria-hidden="true"></i>', function(){
+  var r = confirm("Are you sure you want to display a new random sample?");
+  if (r) {random(window.server_url, window.username );};
+  }, 'New random set').addTo(map);
+{% end if %}
+  // 6. Filter
+{% if buttons['filter'] %}
+L.easyButton( '<i class="myhelp fa fa-filter" aria-hidden="true"></i>', function(){
+  filter(window.server_url, window.username);
+  }, 'Filter').addTo(map);
+  {% end if %}
+// 7. Reset/Redraw
+{% if buttons['reset'] %}
+L.easyButton( '<i class="myhelp fa fa-refresh" aria-hidden="true"></i>', function(){
+  redraw( window.server_url, window.username );
+  }, 'Redraw/Reset view').addTo(map);
+{% end if %}
+  // 8. Search
+{% if buttons['search'] %}
+L.easyButton( '<i class="myhelp fa fa-search" aria-hidden="true"></i>', function(){
+  search();
+  }, 'Search').addTo(map);
+// 8.1 Search Bar
+contentSearch = '<div id="searchBox" style="visibility: hidden;">'
+contentSearch += '<input  onkeyup=inputSearch() type="search" id="mySearch" class="search-bar"  placeholder="Query">'
+contentSearch += '<button type="button" id="mySearchButton" class="search-bar" onclick=clickSearch()> Send </button>'      
+contentSearch += '</br>'
+contentSearch += '<input disabled type="search" id="mySearchMsg"  class="search-bar search-err">'
+contentSearch += '</div>'
+L.control.custom({
+  position: 'topleft',
+  content: contentSearch,
+}).addTo(map);
+{% end if %}
+/**********/
+
+/* Filter and Classes options bottom */
+var contentBottom = '' ;
+var contentBoxes = ' Filter: ' ;
+{% for idx, cl in enumerate(classes) %}
+  contentBottom += '<button id="button_{{ list(cl.values())[0] }}" onclick="custom({{ list(cl.values())[0] }})">{{ list(cl.keys())[0] }}({{ list(cl.values())[0] }})</button>'
+{% end %}
+
+{% for idx, cl in enumerate(classes) %}
+  contentBoxes += '<input type="checkbox" id="checkbox_{{ list(cl.values())[0] }}" >{{ list(cl.values())[0] }}'
+{% end %}
+
+contentBoxes += '<input type="checkbox" id="checkbox_noclass"/>-1'
+// Class Buttons
+{% if buttons['classes'] %}
+L.control.custom({
+  position: 'bottomright',
+  content : contentBottom,
+  classes : 'btn-group',
+  style   :
+    {
+      margin: '10px',
+      padding: '0px 0 0 0',
+      cursor: 'pointer',
+    },
+}).addTo(map);
+{% end if %}
+// Filter check boxes
+{% if buttons['filter'] %}
+L.control.custom({
+  position: 'bottomleft',
+  content : contentBoxes,
+  classes : 'btn-group',
+  style   :
+    {
+      margin: '5px',
+      padding: '0px 0 0 0',
+      cursor: 'pointer',
+    },
+}).addTo(map);
+{% end if %}
+/*****/
+
+function inputSearch(){
+  if (event.keyCode === 13) doSearch(window.server_url, window.username);
+  event.stopPropagation();
+  event.preventDefault();
+}
+function clickSearch(){
+  doSearch(window.server_url, window.username);
+}
+
+</script>
+</body>
+</html>

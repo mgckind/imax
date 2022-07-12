@@ -1,0 +1,78 @@
+#!/usr/bin/env python
+import click
+from imax.version import __version__
+from imax.server import run_server
+from imax.client import run_client
+from imax.utils import copy_config_template, copy_folders, create_images, crop_image
+import logging as lg
+import coloredlogs
+
+def print_version(ctx, param, value):
+    if not value or ctx.resilient_parsing:
+        return
+    click.echo('Version: {}'.format(__version__))
+    ctx.exit()
+
+logger = lg.getLogger('imax')
+
+@click.option('--log', default='info', help='log options [info, debug, error, warning]', show_default=True)
+@click.option('--version', is_flag=True, callback=print_version,expose_value=False, is_eager=True)
+@click.help_option('-h')
+@click.group()
+def imaxG(**kwargs):
+    level = kwargs['log'].lower()
+    if level == 'info':
+        coloredlogs.install(level=lg.INFO)
+    elif level == 'debug':
+        coloredlogs.install(level=lg.DEBUG)
+    elif level == 'error':
+        coloredlogs.install(level=lg.ERROR)
+    elif level == 'warning':
+        coloredlogs.install(level=lg.WARNING)
+    else:
+        coloredlogs.install(level=lg.INFO)
+
+
+@click.option('-c','--config', default='config.yaml', help='path to config file', show_default=True)
+@imaxG.command()
+def server(**kwargs):
+    logger.info("======== IMAX Server")
+    run_server(configfile=kwargs['config'])
+
+
+@click.option('-c','--config', default='config.yaml', help='path to config file',show_default=True )
+@click.option('--local', is_flag=True, help='run client from local static/template files')
+@imaxG.command()
+def client(**kwargs):
+    logger.info("======== IMAX Client")
+    if kwargs['local']:
+        logger.info('Running locally')
+    run_client(configfile=kwargs['config'], local=kwargs['local'])
+
+
+@click.option('-c', '--config', default='config.yaml', help='filename for config file', show_default=True)
+@imaxG.command()
+def create_config(**kwargs):
+    copy_config_template(kwargs['name'])
+
+@imaxG.command()
+def copy_server_files(**kwargs):
+    copy_folders()
+
+@click.option('-f', '--folder', default='images', help='Folder for created images', show_default=True)
+@click.option('-n', '--nimages', default=100, help='Number of images', show_default=True)
+@click.option('-m', '--cmap', default="summer", help='Background color map', show_default=True)
+@imaxG.command()
+def create_fake_images(**kwargs):
+    create_images(N=kwargs['nimages'], folder=kwargs['folder'], mapname=kwargs['cmap'])
+
+
+@click.option('-f', '--folder', default='images', help='Folder for created images', show_default=True)
+@click.option('-i', '--input', required=True, help='Input large image')
+@click.option('-s', '--size', default=128, help='Default tile size (multiple of 4)', show_default=True, type=int)
+@imaxG.command()
+def crop_large_image(**kwargs):
+    crop_image(path=kwargs['folder'], size=kwargs['size'], input=kwargs['input'])    
+
+if __name__ == '__main__':
+    imaxG()

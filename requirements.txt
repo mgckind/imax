@@ -1,9 +1,13 @@
 aiohttp
 aiohttp_cors
 Pillow
+click
 pyyaml
 coloredlogs
 asyncio
 numpy
 tornado
 requests
+matplotlib
+cairosvg
+python-avatars
