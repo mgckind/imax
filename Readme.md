@@ -4,7 +4,7 @@ This is an interactive tool for visualize and classify multiple images at a time
 
 You can move and label images all from the keyboard.
 
-You can see a (not very good) gif demo ot the tool in action, a [live demo](https://deslabs.ncsa.illinois.edu/cexp/) or a better video is [here](https://vimeo.com/319571639)
+You can see a (not very good) gif demo ot the tool in action, or a better video is [here](https://vimeo.com/319571639)
 
 ![Demo](demo/demo.gif)
 
@@ -12,28 +12,44 @@ You can see a (not very good) gif demo ot the tool in action, a [live demo](http
 
 #### Simple deployment
 
+Create Conda Environment:
+
+    conda create -n imax python=3
+    conda activate imax
+  
+Install Cairo Library
+
+    conda install -c conda-forge cairosvg
+
 Clone this repository:
 
 		git clone https://github.com/mgckind/imax.git
-		cd imax/python_server
+		cd imax/
+    pip install -r requirements.txt
 
 Create a config file template:
 
-		cp config_template.yaml config.yaml
+		./imax-run create-config
 
 Edit the `config.yaml` file to have the correct parameters, see [Configuration](#Configuration) for more info.
 
+Create fake images to test, 
+
+    ./imax-run create-fake-images -n 1200 -f images -m inferno
+
+
+
 Start the server:
 
-	   python3 server.py
+	   ./imax-run server
 
 Start the client and visit the url printed python_server:
 
-	   python3 client.py
+	   ./imax-run client
 
 If you are running locally you can go to [http://localhost:8000/](http://localhost:8000/)
 
-#### Docker
+#### Docker (Needs revision)
 
 0. Create image from Dockerfile
 
@@ -74,24 +90,31 @@ This is the Help window displayed
 This is the template config file to use:
 
 ```
+#### DATABASE
+db:
+  dbpath: '{FILL ME}' # Path to sqlite files
+  merge: false
 #### DISPLAY
 display:
-  dataname: '{FILL ME}' #Name for the sqlite DB and config file
-  path: '{FILL ME}'
+  path: '{FILL ME}' # Path to images
   nimages: 1200 #Number of objects to be displayed even if there are more in the folder
   xdim: 40 #X dimension for the display
   ydim: 30 #Y dimension for the display
   tileSize: 256 #Size of the tile for which images are resized at max zoom level
   minXrange: 0
   minYrange: 0
-  deltaZoom: 3 #default == 3
+  deltaZoom: 5 #default == 5
+  min-width: 500
+  max-width: 1400
+  min-height: 500
+  max-height: 1000
 #### SERVER
 server:
   ssl: false #use ssl, need to have certificates
   sslName: test #prefix of .crt and .key files inside ssl/ folder e.g., ssl/{sslName.key}
   host: 'http://localhost' #if using ssl, change to https
   port: 8888
-  rootUrl: '/cexp' #root url for server, e.g. request are made to /cexp/, if None use "/"
+  rootUrl: '/' #root url for server, e.g. request are made to /cexp/, if None use "/"
   #workers: None # None will default to the workers in the machine
 #### CLIENT
 client:
@@ -99,12 +122,17 @@ client:
   port: 8000
 #### OPERATIONS options
 operation:
-  updates: true #allows to update and/or remove classes to images, false and classes are fixed.
+  updates: false #allows to update and/or remove classes to images, false and classes are fixed.
+  help: true
+  fullscreen: true
+  invert: true
+  toggle-classes: true
+  random: true
+  filter: true
+  reset: true
+  search: true
 #### CLASSES
 #### classes, use any classes from 0 to 9, class 0 is for hidden! class -1 is no class
 classes:
-    - Delete: 0
-    - Spiral: 8
-    - Elliptical: 9
-    - Other: 7
+    - Test: 5
 ```
