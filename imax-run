@@ -53,7 +53,7 @@ def client(**kwargs):
 @click.option('-c', '--config', default='config.yaml', help='filename for config file', show_default=True)
 @imaxG.command()
 def create_config(**kwargs):
-    copy_config_template(kwargs['name'])
+    copy_config_template(kwargs['config'])
 
 @imaxG.command()
 def copy_server_files(**kwargs):
